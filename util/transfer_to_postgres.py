@@ -3,8 +3,8 @@ from os.path import isfile
 
 import psycopg2
 
-from SlapPy.create_tables import create_tables
-from SlapPy.tokens import *
+from util.create_tables import create_tables
+from tokens import *
 
 if __name__ == '__main__':
     connection = None

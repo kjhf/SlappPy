@@ -3,7 +3,7 @@ import time
 
 import requests
 
-from SlapPy.tokens import BOT_TOKEN
+from tokens import BOT_TOKEN
 
 _reset_time = None
 

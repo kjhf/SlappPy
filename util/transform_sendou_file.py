@@ -2,7 +2,7 @@ import datetime
 import json
 from os.path import isfile
 
-from SlapPy.backtrace_discord_id import backtrace_discord_id, clear_reset_time
+from util.backtrace_discord_id import backtrace_discord_id, clear_reset_time
 
 if __name__ == '__main__':
     # The dump file is a partial download that contains a dump of responses bytes on each line, e.g.

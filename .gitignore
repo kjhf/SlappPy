@@ -1,2 +1,10 @@
-/tokens.py
+# Default ignored files
+/shelf/
+/workspace.xml
+.idea/
+# Custom
 __pycache__/
+venv/
+Notes.md
+tokens.py
+*.bat
