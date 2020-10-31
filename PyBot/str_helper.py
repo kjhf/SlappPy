@@ -4,11 +4,14 @@ def truncate(string: str, max_length: int, indicator: str = "") -> str:
     Optionally specify a truncation indicator.
     :param string: The string to truncate
     :param max_length: The maximum length of the string
-    :param indicator: Indicator appended if truncated
+    :param indicator: Indicator appended if truncated, e.g. …
     :return: The result string.
     """
     if string is None:
         raise ValueError('string is None.')
+
+    if not isinstance(string, str):
+        raise ValueError('string specified to truncate is not a string.')
 
     if len(indicator) > max_length:
         raise ValueError('Truncation indicator length cannot be greater than the maximum length of the string.')

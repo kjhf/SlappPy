@@ -1,15 +1,16 @@
 from datetime import datetime
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Dict
 
 import discord
-from discord import Role, Guild, Color, Colour
+from discord import Role, Guild, Color
 from discord.ext import commands
 from discord.ext.commands import Bot, Context, CommandNotFound
 
-from PyBot import embed_helper
-from PyBot.str_helper import truncate
+from . import embed_helper
+from .str_helper import truncate
 from slapp_py.slapipes import initialise_slapp, query_slapp
-from slapp_py.strings import team_to_string, teams_to_string, best_team_player_div_string, div_to_string
+from slapp_py.strings import team_to_string, teams_to_string, best_team_player_div_string, div_to_string, \
+    escape_characters, truncate_source
 from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
@@ -107,16 +108,33 @@ if __name__ == '__main__':
                         break
 
                     p = matched_players[i]
+                    names = p["Names"] if "Names" in p else ['']
+
+                    # Transform names by adding a backslash to any underscores or stars.
+                    if names:
+                        names = list(map(lambda n: escape_characters(n), names))
+
                     teams = list(map(lambda team_id: additional_teams[team_id.__str__()], p["Teams"]))
                     current_team = teams[0] if teams else None
-                    old_teams = f'\nOld teams: {", ".join((teams_to_string(teams[1:])))}' if teams[1:] else ''
-                    if p["Names"][1:]:
-                        other_names = truncate("_ᴬᴷᴬ_ " + ', '.join(p["Names"][1:]) + "\n", 1000, "…")
+
+                    if len(teams) > 1:
+                        old_teams = f'\nOld teams: {", ".join((teams_to_string(teams[1:])))}'
+                    else:
+                        old_teams = ''
+
+                    if len(names) > 1:
+                        other_names = truncate("_ᴬᴷᴬ_ " + ', '.join(names[1:]) + "\n", 1000, "…")
                     else:
                         other_names = ''
-                    info = f'{other_names}Plays for {team_to_string(current_team)}{old_teams}\n _{", ".join(p["Sources"])}_'
 
-                    builder.add_field(name=truncate(p["Names"][0], 1000, ""),
+                    twitter = f'{p["Twitter"]}\n' if "Twitter" in p else ""
+                    sources = p["Sources"] if "Sources" in p else ['']
+                    sources = ", ".join(list(map(lambda source: truncate_source(source), sources)))
+                    info = f'{other_names}Plays for {team_to_string(current_team)}{old_teams}\n{twitter} ' \
+                           f'_{sources}_'
+
+                    top500 = "👑 " if "Top500" in p and p["Top500"] else ""
+                    builder.add_field(name=truncate(top500 + names[0], 1000, ""),
                                       value=truncate(info, 1000, "…_"),
                                       inline=False)
 
@@ -131,15 +149,20 @@ if __name__ == '__main__':
                     players = matched_players_for_teams[t["Id"].__str__()]
                     player_strings = ''
                     for player_tuple in players:
-                        p = player_tuple["Item1"]
-                        in_team = player_tuple["Item2"]
-                        player_strings += f'{p["Names"][0]} {("(Current)" if in_team else "(Ex)")}'
-                        player_strings += separator
+                        if player_tuple:
+                            p = player_tuple["Item1"] if "Item1" in player_tuple else {}
+                            in_team = player_tuple["Item2"] if "Item2" in player_tuple else None
+                            name = escape_characters(p["Names"][0]) if "Names" in p else '(Unknown player)'
+                            player_strings += \
+                                f'{name} {("(Most recent)" if in_team else "(Ex)" if in_team is False else "")}'
+                            player_strings += separator
 
                     player_strings = player_strings[0:-len(separator)]
                     div_phrase = best_team_player_div_string(t, players, additional_teams)
+                    sources = t["Sources"] if "Sources" in t else ['']
+                    sources = ", ".join(list(map(lambda source: truncate_source(source), sources)))
                     info = f'{div_to_string(t["Div"])}. {div_phrase} Players: {player_strings}\n' \
-                           f'_{", ".join(t["Sources"])}_'
+                           f'_{sources}_'
 
                     builder.add_field(name=truncate(team_to_string(t), 1000, ""),
                                       value=truncate(info, 1000, "…_"),

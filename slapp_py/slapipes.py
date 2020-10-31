@@ -9,9 +9,10 @@ def initialise_slapp():
     global slapp_path
 
     result = subprocess.run(['cd'], stdout=subprocess.PIPE, encoding='utf-8', shell=True)
-    slapp_path = result.stdout
+    slapp_path = result.stdout.strip(" \r\n")
     print('cd: ' + slapp_path)
-    slapp_path = slapp_path[0:slapp_path.index('PyBot')]
+    if not slapp_path.endswith('SlapPy') and 'PyBot' in slapp_path:
+        slapp_path = slapp_path[0:slapp_path.index('PyBot')]
     slapp_path = os.path.join(slapp_path, 'venv', 'Slapp', 'SplatTagConsole.dll')
     assert os.path.isfile(slapp_path), f'Not a file: {slapp_path}'
 

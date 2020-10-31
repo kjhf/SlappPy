@@ -3,6 +3,8 @@ from typing import Optional, Union, Tuple
 import discord
 from discord import Embed, Color, Colour
 
+from PyBot.str_helper import truncate
+
 
 def to_embed(
         message: str,
@@ -25,8 +27,8 @@ def to_embed(
         raise discord.InvalidArgument('Specify message or image_url')
 
     return discord.Embed(
-        description=description,
+        description=truncate(description, 6000, "…"),
         colour=colour if not isinstance(colour, (int, int, int)) else Color.from_rgb(colour[0], colour[1], colour[2]),
         image_url=image_url,
-        title=title
+        title=truncate(title, 6000, "…")
     )
