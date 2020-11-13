@@ -6,8 +6,8 @@ from discord import Role, Guild, Color
 from discord.ext import commands
 from discord.ext.commands import Bot, Context, CommandNotFound
 
-from . import embed_helper
-from .str_helper import truncate
+from PyBot import embed_helper
+from PyBot import str_helper
 from slapp_py.slapipes import initialise_slapp, query_slapp
 from slapp_py.strings import team_to_string, teams_to_string, best_team_player_div_string, div_to_string, \
     escape_characters, truncate_source
@@ -69,7 +69,8 @@ if __name__ == '__main__':
         aliases=['slapp', 'splattag'],
         help=f'{COMMAND_PREFIX}slapp <query>',
         pass_ctx=True)
-    async def slapp(ctx: Context, query: str):
+    async def slapp(ctx: Context, *query):
+        query: str = ' '.join(query)
         print('slapp called with query ' + query)
         now = datetime.utcnow()
 
@@ -123,7 +124,7 @@ if __name__ == '__main__':
                         old_teams = ''
 
                     if len(names) > 1:
-                        other_names = truncate("_ᴬᴷᴬ_ " + ', '.join(names[1:]) + "\n", 1000, "…")
+                        other_names = str_helper.truncate("_ᴬᴷᴬ_ " + ', '.join(names[1:]) + "\n", 1000, "…")
                     else:
                         other_names = ''
 
@@ -134,8 +135,8 @@ if __name__ == '__main__':
                            f'_{sources}_'
 
                     top500 = "👑 " if "Top500" in p and p["Top500"] else ""
-                    builder.add_field(name=truncate(top500 + names[0], 1000, ""),
-                                      value=truncate(info, 1000, "…_"),
+                    builder.add_field(name=str_helper.truncate(top500 + names[0], 1000, ""),
+                                      value=str_helper.truncate(info, 1000, "…_"),
                                       inline=False)
 
             if has_matched_teams:
@@ -164,15 +165,20 @@ if __name__ == '__main__':
                     info = f'{div_to_string(t["Div"])}. {div_phrase} Players: {player_strings}\n' \
                            f'_{sources}_'
 
-                    builder.add_field(name=truncate(team_to_string(t), 1000, ""),
-                                      value=truncate(info, 1000, "…_"),
+                    builder.add_field(name=str_helper.truncate(team_to_string(t), 1000, ""),
+                                      value=str_helper.truncate(info, 1000, "…_"),
                                       inline=False)
 
             builder.set_footer(
                 text=f"Fetched in {int((datetime.utcnow() - now).microseconds / 1000)} milliseconds. " +
                      ('Only the first 9 results are shown for players and teams.' if show_limited else ''),
                 icon_url="https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png")
-            await ctx.send(embed=builder)
+
+            try:
+                await ctx.send(embed=builder)
+            except Exception as e:
+                await ctx.send(content=f'Too many results, sorry 😔 ({e.__str__()})')
+
 
     @bot.event
     async def on_command_error(ctx, error):

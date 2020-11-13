@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from PyBot.str_helper import truncate
 
@@ -79,15 +79,21 @@ def best_team_player_div_string(team: dict, players_for_team: List[dict], known_
                         highest_div = player_team["Div"]
                         best_player = p
 
-    if div_is_unknown(highest_div):
+    if div_is_unknown(highest_div) or best_player is None:
         return ''
     elif highest_div["Value"] == team["Div"]["Value"]:
         return 'No higher div players.'
     else:
-        return f"Highest div'd player is {escape_characters(best_player['Name'])} at {div_to_string(highest_div)}."
+        if 'Name' in best_player:
+            name: str = best_player['Name']
+        elif 'Names' in best_player and len(best_player['Names']) > 0:
+            name: str = best_player['Names'][0]
+        else:
+            name: str = '(unknown)'
+        return f"Highest div'd player is {escape_characters(name)} at {div_to_string(highest_div)}."
 
 
-def escape_characters(string: str, characters: str = '_*', escape_character: str = '\\') -> str:
+def escape_characters(string: Union[str, dict], characters: str = '_*', escape_character: str = '\\') -> str:
     """
     Escape characters in a string with the specified escape character(s).
     :param string: The string to escape
@@ -95,8 +101,13 @@ def escape_characters(string: str, characters: str = '_*', escape_character: str
     :param escape_character: The character to use an an escape
     :return: The escaped string
     """
-    for char in characters:
-        string.replace(char, escape_character + char)
+    if isinstance(string, dict):
+        for element in string:
+            for char in characters:
+                element = element.replace(char, escape_character + char)
+    else:
+        for char in characters:
+            string = string.__str__().replace(char, escape_character + char)
     return string
 
 

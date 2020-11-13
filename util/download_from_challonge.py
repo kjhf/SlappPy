@@ -46,7 +46,7 @@ if __name__ == '__main__':
                 else:
                     start_time = isoparse(start_time)
 
-            name = f'{start_time.year}-{start_time.month}-{start_time.day}-{tourney_contents["name"]}-' \
+            name = f'{start_time.strftime("%Y-%m-%d")}-{tourney_contents["name"]}-' \
                    f'{id_to_fetch}.json'
             save_to_file(f'./tournaments/{name}', json.dumps(tourney_contents, default=str))
             print(f'OK! (Saved read tourney {name})')

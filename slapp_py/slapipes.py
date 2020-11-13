@@ -23,7 +23,7 @@ async def query_slapp(query) -> (bool, dict):
     # if slapp_process is None:
     slapp_process = subprocess.Popen(
         # f'dotnet \"{slapp_path}\" {query} --keepOpen',
-        f'dotnet \"{slapp_path}\" {query}',
+        f'dotnet \"{slapp_path}\" \"{query}\"',
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         encoding='utf-8',

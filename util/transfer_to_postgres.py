@@ -3,6 +3,7 @@ from os.path import isfile
 
 import psycopg2
 
+from util import utils
 from util.create_tables import create_tables
 from tokens import *
 
@@ -29,8 +30,7 @@ if __name__ == '__main__':
         if len(players_snapshot_path) > 0:
             assert isfile(players_snapshot_path)
             print('✔ Is a file.')
-            with open(players_snapshot_path, 'r', encoding='utf-8') as infile:
-                players_snapshot = json.load(infile)
+            players_snapshot = utils.load_json_from_file(players_snapshot_path)
 
             print(f'Processing {len(players_snapshot)} players.')
             for i, _ in enumerate(players_snapshot):
@@ -58,8 +58,7 @@ if __name__ == '__main__':
         if len(teams_snapshot_path) > 0:
             assert isfile(teams_snapshot_path)
             print('✔ Is a file.')
-            with open(teams_snapshot_path, 'r', encoding='utf-8') as infile:
-                teams_snapshot = json.load(infile)
+            teams_snapshot = utils.load_json_from_file(teams_snapshot_path)
 
             print(f'Loaded {len(teams_snapshot)} teams.')
             for i, _ in enumerate(teams_snapshot):

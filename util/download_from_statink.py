@@ -24,7 +24,7 @@ if __name__ == '__main__':
             if not exists('./statink'):
                 makedirs('./statink')
             start_time: datetime = isoparse(contents['end_at']['iso8601'])
-            name = f'{start_time.year}-{start_time.month}-{start_time.day}-stat.ink-' \
+            name = f'{start_time.strftime("%Y-%m-%d")}-stat.ink-' \
                    f'{id_to_fetch}.json'
             save_to_file(f'./statink/{name}', json.dumps(contents))
             print(f'OK! (Saved contents {name})')

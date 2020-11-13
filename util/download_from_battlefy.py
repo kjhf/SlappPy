@@ -12,7 +12,10 @@ TEAMS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s/teams'
 
 
 if __name__ == '__main__':
-    ids = [input('id?')]
+    ids = \
+        [
+            input('id?')
+        ]
 
     for id_to_fetch in ids:
         tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT % id_to_fetch)
@@ -28,7 +31,7 @@ if __name__ == '__main__':
             if not exists('./tournaments'):
                 makedirs('./tournaments')
             start_time: datetime = isoparse(tourney_contents['startTime'])
-            name = f'{start_time.year}-{start_time.month}-{start_time.day}-{tourney_contents["slug"]}-' \
+            name = f'{start_time.strftime("%Y-%m-%d")}-{tourney_contents["slug"]}-' \
                    f'{id_to_fetch}.json'
             save_to_file(f'./tournaments/{name}', json.dumps(tourney_contents))
             print(f'OK! (Saved read tourney {name})')
