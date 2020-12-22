@@ -15,9 +15,9 @@ def fetch_address(address) -> dict:
     return json.loads(response.content)
 
 
-def save_to_file(path: str, content: Union[str, List[AnyStr]]):
+def save_to_file(path: str, content: Union[str, List[AnyStr]], overwrite: bool = True):
     """Save content to specified path"""
-    with open(path, 'x') as the_file:
+    with open(path, 'w' if overwrite else 'x') as the_file:
         if isinstance(content, str):
             the_file.write(content)
         else:

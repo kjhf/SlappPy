@@ -1,0 +1,3 @@
+REM Example run batch script to run the bot correctly.
+REM Tokens must be present and SplatTagConsole must be built and moved into venv/Slapp/...
+cmd /k "cd /d D:\User\Projects\SlapPy\venv\Scripts\ & activate & cd /d D:\User\Projects\SlapPy & D:\User\Projects\SlapPy\venv\Scripts\python.exe -m PyBot.entry.main PyBot\entry\main.py

@@ -1,5 +1,7 @@
 import json
 from datetime import datetime
+from typing import Union, List
+
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists
@@ -11,11 +13,9 @@ TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s'
 TEAMS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s/teams'
 
 
-if __name__ == '__main__':
-    ids = \
-        [
-            input('id?')
-        ]
+def download_from_battlefy(ids: Union[str, List[str]]) -> dict:
+    if isinstance(ids, str):
+        ids = [ids]
 
     for id_to_fetch in ids:
         tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT % id_to_fetch)
@@ -44,3 +44,13 @@ if __name__ == '__main__':
             makedirs('./teams')
         save_to_file(f'./teams/{name}', json.dumps(team_contents))
         print(f'OK! (Saved read teams {name})')
+        return team_contents
+
+
+if __name__ == '__main__':
+    input_ids = \
+        [
+            input('id?')
+        ]
+
+    download_from_battlefy(input_ids)
