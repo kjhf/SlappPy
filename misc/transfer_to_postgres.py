@@ -3,8 +3,8 @@ from os.path import isfile
 
 import psycopg2
 
-from util import utils
-from util.create_tables import create_tables
+from misc import utils
+from misc.create_tables import create_tables
 from tokens import *
 
 if __name__ == '__main__':

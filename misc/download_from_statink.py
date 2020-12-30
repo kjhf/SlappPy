@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists
-from util.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_to_file
 
 STAT_INK_ADDRESS_FORMAT: str = 'https://stat.ink/api/v2/battle/%s?format=pretty'
 

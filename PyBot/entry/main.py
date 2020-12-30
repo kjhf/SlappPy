@@ -1,17 +1,18 @@
 import os
 import re
 import sys
+import traceback
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import discord
 import requests
-from discord import Role, Guild
+from discord import Role, Guild, Embed
 from discord.ext import commands
 from discord.ext.commands import Bot, Context, CommandNotFound
 
+from helpers.str_helper import equals_ignore_case
 from slapp_py.slapipes import initialise_slapp, query_slapp, process_slapp
-from slapp_py.strings import equals_ignore_case
 from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def verify(ctx: Context, team_slug_or_confirmation: Optional[str]):
         november_2020_low_ink = '5f98cdae7d10b0459b2812dd'
-        from util.download_from_battlefy import download_from_battlefy
+        from misc.download_from_battlefy import download_from_battlefy
         tournament: dict = download_from_battlefy(november_2020_low_ink)
         if len(tournament) == 1:
             tournament = tournament[0]
@@ -156,14 +157,7 @@ if __name__ == '__main__':
                         else:
                             now = datetime.now()
                             success, response = await query_slapp(player_slug)
-                            if success:
-                                builder = process_slapp(response, now)
-                                try:
-                                    await ctx.send(embed=builder)
-                                except Exception as e:
-                                    await ctx.send(content=f'Too many results, sorry 😔 ({e.__str__()})')
-                            else:
-                                await ctx.send(content=f'Unexpected error from Slapp 🤔')
+                            await send_slapp(ctx, now, success, response)
                 else:
                     continue
 
@@ -181,24 +175,8 @@ if __name__ == '__main__':
         query: str = ' '.join(query)
         print('slapp called with query ' + query)
         now = datetime.utcnow()
-
         success, response = await query_slapp(query)
-        if success:
-            try:
-                builder = process_slapp(response, now)
-            except Exception as e:
-                await ctx.send(content=f'Something went wrong processing the result from Slapp. Blame Slate. 😒🤔 '
-                                       f'({e.__str__()})')
-                print(e)
-                return
-
-            try:
-                await ctx.send(embed=builder)
-            except Exception as e:
-                await ctx.send(content=f'Too many results, sorry 😔 ({e.__str__()})')
-        else:
-            await ctx.send(content=f'Unexpected error from Slapp 🤔')
-
+        await send_slapp(ctx, now, success, response)
 
     @bot.event
     async def on_command_error(ctx, error):
@@ -227,6 +205,49 @@ if __name__ == '__main__':
             presence += ' (Debug Attached)'
 
         await bot.change_presence(activity=discord.Game(name=presence))
+
+    async def send_slapp(ctx: Context, now: datetime, success: bool, response: dict):
+        if success:
+            try:
+                builder, colour = process_slapp(response, now)
+            except Exception as e:
+                await ctx.send(content=f'Something went wrong processing the result from Slapp. Blame Slate. 😒🤔 '
+                                       f'({e.__str__()})')
+                print(traceback.format_exc())
+                return
+
+            try:
+                removed_fields: List[dict] = []
+                message = 1
+                while message <= 10:
+                    while builder.__len__() > 6000 or len(builder.fields) > 20:
+                        index = len(builder.fields) - 1
+                        removed: dict = builder._fields[index]
+                        builder.remove_field(index)
+                        removed_fields.append(removed)
+
+                    await ctx.send(embed=builder)
+
+                    if len(removed_fields):
+                        message += 1
+                        removed_fields.reverse()
+                        builder = Embed(title=f'Page {message}', colour=colour)
+                        for field in removed_fields:
+                            try:
+                                builder._fields.append(field)
+                            except AttributeError:
+                                builder._fields = [field]
+                        removed_fields.clear()
+                    else:
+                        break
+
+            except Exception as e:
+                await ctx.send(content=f'Too many results, sorry 😔 ({e.__str__()})')
+                print(traceback.format_exc())
+                print(f'Attempted to send:\n{builder.to_dict()}')
+        else:
+            await ctx.send(content=f'Unexpected error from Slapp 🤔')
+
 
     initialise_slapp()
     bot.run(BOT_TOKEN)

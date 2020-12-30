@@ -2,16 +2,18 @@ import json
 import os
 import subprocess
 from datetime import datetime
-from typing import List, Dict
-from urllib.parse import quote
+from typing import List, Dict, Union
+from uuid import UUID
 
 from discord import Color, Embed
 
-from PyBot.helpers import embed_helper, str_helper
-from slapp_py.strings import escape_characters, teams_to_string, attempt_link_source, team_to_string, \
-    best_team_player_div_string, div_to_string
+from PyBot.helpers.embed_helper import to_embed
+from helpers.dict_helper import from_list
+from helpers.str_helper import join, truncate
+from slapp_py.strings import escape_characters, attempt_link_source
 
 slapp_path = None
+MAX_RESULTS = 20
 
 
 def initialise_slapp():
@@ -51,13 +53,32 @@ async def query_slapp(query) -> (bool, dict):
     return response["Message"] == "OK", response
 
 
-def process_slapp(response: dict, now: datetime) -> Embed:
-    matched_players: List[dict] = (response["Players"])
+def process_slapp(response: dict, now: datetime) -> (Embed, Color):
+    from core_classes.player import Player
+    from core_classes.team import Team
+    
+    matched_players: List[Player] = from_list(lambda x: Player.from_dict(x), response.get("Players"))
     matched_players_len = len(matched_players)
-    matched_teams: List[dict] = (response["Teams"])
+    matched_teams: List[Team] = from_list(lambda x: Team.from_dict(x), response.get("Teams"))
     matched_teams_len = len(matched_teams)
-    additional_teams: Dict[str, dict] = response["AdditionalTeams"]
-    matched_players_for_teams: Dict[str, List[dict]] = response["PlayersForTeams"]
+    known_teams: Dict[str, Team] = {}
+    for team_id in response.get("AdditionalTeams"):
+        known_teams[team_id.__str__()] = Team.from_dict(response.get("AdditionalTeams")[team_id])
+    for team in matched_teams:
+        known_teams[team.guid.__str__()] = team
+
+    matched_players_for_teams: Dict[str, List[Dict[str, Union[Player, bool]]]] = {}
+    for team_id in response.get("PlayersForTeams"):
+        matched_players_for_teams[team_id] = []
+        for tup in response.get("PlayersForTeams")[team_id]:
+            player_tuple_for_team: Dict[str, Union[Player, bool]] = \
+                {"Item1": Player.from_dict(tup["Item1"]) if "Item1" in tup else None,
+                 "Item2": "Item2" in tup}
+            matched_players_for_teams[team_id].append(player_tuple_for_team)
+
+    sources: Dict[str, str] = {}
+    for source_id in response.get("Sources"):
+        sources[source_id] = response.get("Sources")[source_id]
 
     has_matched_players = matched_players_len != 0
     has_matched_teams = matched_teams_len != 0
@@ -77,109 +98,152 @@ def process_slapp(response: dict, now: datetime) -> Embed:
         title = f"Didn't find anything 😔"
         colour = Color.red()
 
-    builder = embed_helper.to_embed('', colour=colour, title=title)
+    builder = to_embed('', colour=colour, title=title)
+    embed_colour = colour
 
     if has_matched_players:
-        for i in range(0, 9):
+        for i in range(0, MAX_RESULTS):
             if i >= matched_players_len:
                 break
 
             p = matched_players[i]
-            names = p["Names"] if "Names" in p else ['']
 
             # Transform names by adding a backslash to any backslashes.
-            if names:
-                names = list(map(lambda n: escape_characters(n, '\\'), names))
+            names = list(map(lambda n: escape_characters(n, '\\'), p.names))
 
-            teams = list(map(lambda team_id: additional_teams[team_id.__str__()], p["Teams"]))
-            current_team = teams[0] if teams else None
+            team_ids: List[UUID] = p.teams
+            resolved_teams: List[Team] = []
+            for team_id in team_ids:
+                from core_classes.builtins import NoTeam
+                if team_id == NoTeam.guid:
+                    resolved_teams.append(NoTeam)
+                else:
+                    team = known_teams.get(team_id.__str__(), None)
+                    if not team:
+                        print(f"Team id was not specified in JSON: {team_id}")
+                    else:
+                        resolved_teams.append(team)
 
-            if len(teams) > 1:
-                old_teams = f'\nOld teams: {", ".join((teams_to_string(teams[1:])))}'
+            current_team = f'Plays for {resolved_teams[0]}\n' if resolved_teams else ''
+
+            if len(resolved_teams) > 1:
+                old_teams = f'Old teams: {join(", ", resolved_teams[1:])}\n'
             else:
                 old_teams = ''
 
             if len(names) > 1:
-                other_names = str_helper.truncate("_ᴬᴷᴬ_ " + ', '.join(names[1:]) + "\n", 1000, "…")
+                other_names = truncate("_ᴬᴷᴬ_ " + ', '.join(names[1:]) + "\n", 1022, "…\n")
             else:
                 other_names = ''
 
-            twitter = f'{p["Twitter"]}\n' if "Twitter" in p else ""
-            if "BattlefySlugs" in p:
-                battlefy = ''.join(list(map(
-                    lambda slug: '[' + escape_characters(slug, "\\") +
-                                 f'](https://battlefy.com/users/{quote(slug)})\n',
-                    p['BattlefySlugs'])))
-            else:
-                battlefy = ''
-            sources = p["Sources"] if "Sources" in p else ['']
-            sources.reverse()  # Reverse so last added source is first ...
-            sources = "\n ".join(list(map(lambda source: attempt_link_source(source), sources)))
-            top500 = "👑 " if "Top500" in p and p["Top500"] else ""
+            chars = "\\"
+            battlefy = ''
+            for battlefy_profile in p.battlefy.slugs:
+                battlefy += f'[{escape_characters(battlefy_profile.value, chars)}]' \
+                            f'({battlefy_profile.uri})\n'
+
+            twitch = ''
+            for twitch_profile in p.twitch_profiles:
+                twitch += f'[{escape_characters(twitch_profile.value, chars)}]' \
+                            f'({twitch_profile.uri})\n'
+
+            twitter = ''
+            for twitter_profile in p.twitter_profiles:
+                twitter += f'[{escape_characters(twitter_profile.value, chars)}]' \
+                            f'({twitter_profile.uri})\n'
+
+            player_sources: List[UUID] = p.sources
+            player_sources.reverse()  # Reverse so last added source is first ...
+            player_source_names: List[str] = []
+            for source in player_sources:
+                from core_classes.builtins import BuiltinSource
+                if source == BuiltinSource.guid:
+                    player_source_names.append("(builtin)")
+                else:
+                    name = sources.get(source.__str__(), None)
+                    if not name:
+                        print(f"Source was not specified in JSON: {source}")
+                    else:
+                        player_source_names.append(name)
+            player_sources: str = \
+                "\n ".join(list(map(lambda s: attempt_link_source(s), player_source_names)))
+            top500 = "👑 " if p.top500 else ''
 
             # If there's just the one matched player, move the sources to the next field.
             if matched_players_len == 1:
-                info = f'{other_names}Plays for {team_to_string(current_team)}{old_teams}\n{twitter}{battlefy}'
-                builder.add_field(name=str_helper.truncate(top500 + names[0], 256, ""),
-                                  value=str_helper.truncate(info, 1023, "…_"),
+                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}'
+                builder.add_field(name=truncate(top500 + names[0], 256, ""),
+                                  value=truncate(info, 1023, "…_"),
                                   inline=False)
 
                 builder.add_field(name='\tSources:',
-                                  value=str_helper.truncate('_' + sources + '_', 1023, "…_"),
+                                  value=truncate('_' + player_sources + '_', 1023, "…_"),
                                   inline=False)
             else:
-                info = f'{other_names}Plays for {team_to_string(current_team)}{old_teams}\n{twitter}{battlefy}' \
-                       f'_{sources}_'
-                builder.add_field(name=str_helper.truncate(top500 + names[0], 256, ""),
-                                  value=str_helper.truncate(info, 1023, "…_"),
+                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}\n' \
+                       f'_{player_sources}_'
+                builder.add_field(name=truncate(top500 + names[0], 256, ""),
+                                  value=truncate(info, 1023, "…_"),
                                   inline=False)
 
     if has_matched_teams:
         separator = ',\n' if matched_teams_len == 1 else ', '
 
-        for i in range(0, 9):
+        for i in range(0, MAX_RESULTS):
             if i >= matched_teams_len:
                 break
 
             t = matched_teams[i]
-            players = matched_players_for_teams[t["Id"].__str__()]
+            players = matched_players_for_teams[t.guid.__str__()]
             player_strings = ''
             for player_tuple in players:
                 if player_tuple:
-                    p = player_tuple["Item1"] if "Item1" in player_tuple else {}
-                    in_team = player_tuple["Item2"] if "Item2" in player_tuple else None
-                    name = escape_characters(p["Names"][0]) \
-                        if "Names" in p and len(p["Names"]) > 0 \
-                        else '(Unknown player)'
+                    p = player_tuple["Item1"]
+                    in_team = player_tuple["Item2"]
+                    name = escape_characters(p.name.value)
                     player_strings += \
                         f'{name} {("(Most recent)" if in_team else "(Ex)" if in_team is False else "")}'
                     player_strings += separator
 
             player_strings = player_strings[0:-len(separator)]
-            div_phrase = best_team_player_div_string(t, players, additional_teams)
-            sources = t["Sources"] if "Sources" in t else ['']
-            sources.reverse()  # Reverse so last added source is first ...
-            sources = "\n".join(list(map(lambda source: attempt_link_source(source), sources)))
+            div_phrase = Team.best_team_player_div_string(t, players, known_teams)
+            if div_phrase:
+                div_phrase += '\n'
+            team_sources: List[UUID] = t.sources
+            team_sources.reverse()  # Reverse so last added source is first ...
+            team_source_names: List[str] = []
+            for source in team_sources:
+                from core_classes.builtins import BuiltinSource
+                if source == BuiltinSource.guid:
+                    team_source_names.append("(builtin)")
+                else:
+                    name = sources.get(source.__str__(), None)
+                    if not name:
+                        print(f"Source was not specified in JSON: {source}")
+                    else:
+                        team_source_names.append(name)
+            team_sources: str = \
+                "\n ".join(list(map(lambda s: attempt_link_source(s), team_source_names)))
 
             # If there's just the one matched team, move the sources to the next field.
             if matched_teams_len == 1:
-                info = f'{div_to_string(t["Div"])}. {div_phrase}\nPlayers: {player_strings}'
-                builder.add_field(name=str_helper.truncate(team_to_string(t), 256, ""),
-                                  value=str_helper.truncate(info, 1023, "…_"),
+                info = f'{div_phrase}Players: {player_strings}'
+                builder.add_field(name=truncate(t.__str__(), 256, ""),
+                                  value=truncate(info, 1023, "…_"),
                                   inline=False)
 
                 builder.add_field(name='\tSources:',
-                                  value=str_helper.truncate('_' + sources + '_', 1023, "…_"),
+                                  value=truncate('_' + team_sources + '_', 1023, "…_"),
                                   inline=False)
             else:
-                info = f'{div_to_string(t["Div"])}. {div_phrase}\nPlayers: {player_strings}\n' \
-                       f'_{sources}_'
-                builder.add_field(name=str_helper.truncate(team_to_string(t), 256, ""),
-                                  value=str_helper.truncate(info, 1023, "…_"),
+                info = f'{div_phrase}Players: {player_strings}\n' \
+                       f'_{team_sources}_'
+                builder.add_field(name=truncate(t.__str__(), 256, ""),
+                                  value=truncate(info, 1023, "…_"),
                                   inline=False)
 
     builder.set_footer(
         text=f"Fetched in {int((datetime.utcnow() - now).microseconds / 1000)} milliseconds. " +
-             ('Only the first 9 results are shown for players and teams.' if show_limited else ''),
+             (f'Only the first {MAX_RESULTS} results are shown for players and teams.' if show_limited else ''),
         icon_url="https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png")
-    return builder
+    return builder, embed_colour

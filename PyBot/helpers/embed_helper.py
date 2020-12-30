@@ -3,12 +3,12 @@ from typing import Optional, Union, Tuple
 import discord
 from discord import Embed, Color, Colour
 
-from PyBot.helpers.str_helper import truncate
+from helpers.str_helper import truncate
 
 
 def to_embed(
         message: str,
-        colour: Optional[Union[Colour, Tuple[int, int, int]]] = None,
+        colour: Union[None, Colour, Tuple[int, int, int]] = None,
         title: str = None,
         image_url: Optional[str] = None) -> Embed:
     """

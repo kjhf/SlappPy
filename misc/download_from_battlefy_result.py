@@ -5,8 +5,8 @@ from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists, join, isfile
 from tokens import CLOUD_BACKEND
-from util import utils
-from util.utils import fetch_address, save_to_file
+from misc import utils
+from misc.utils import fetch_address, save_to_file
 
 RESULT_INFO_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/stages/%s/latest-round-standings'
 TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s'

@@ -6,7 +6,7 @@ from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists
 from tokens import CLOUD_BACKEND
-from util.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_to_file
 
 BATTLEFY_LOW_INK_ADDRESS_FORMAT: str = 'https://battlefy.com/low-ink//%s/participants'
 TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s'

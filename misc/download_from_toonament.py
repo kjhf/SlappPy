@@ -4,7 +4,7 @@ from typing import List
 import requests
 from bs4 import BeautifulSoup
 
-from util.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_to_file
 
 TOONAMENT_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s'
 TEAMS_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s/participants/'

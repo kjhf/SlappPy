@@ -3,14 +3,28 @@ from datetime import datetime
 from os import makedirs
 from os.path import exists
 
-import challonge
 from dateutil.parser import isoparse
+from smashggpy.models.Event import Event
+from smashggpy.util import Initializer
+from smashggpy.util.QueryQueueDaemon import QueryQueueDaemon
 
-from tokens import CHALLONGE_API_KEY, CHALLONGE_USERNAME
-from util.utils import save_to_file
+from tokens import SMASH_GG_API_KEY
+from misc.utils import save_to_file
 
 if __name__ == '__main__':
-    challonge.set_credentials(CHALLONGE_USERNAME, CHALLONGE_API_KEY)
+    Initializer.initialize(SMASH_GG_API_KEY, 'info')
+    tournament = Event.get('tipped-off-12-presented-by-the-lab-gaming-center', 'melee-singles')
+    sets = tournament.get_sets()
+    for ggset in sets:
+        print("{0}: {1} {2} - {3} {4}".format(
+            ggset.full_round_text,
+            ggset.player1,
+            ggset.score1,
+            ggset.score2,
+            ggset.player2)
+        )
+
+    QueryQueueDaemon.kill_daemon()
 
     ids = [input('id/url? NOTE FOR SUBDOMAINS YOU MUST PREPEND THE SUBDOMAIN TO THE ID e.g. paddling-abc123')]
 
