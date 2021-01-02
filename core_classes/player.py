@@ -9,6 +9,7 @@ from core_classes.socials.sendou import Sendou
 from core_classes.socials.twitch import Twitch
 from core_classes.socials.twitter import Twitter
 from helpers.dict_helper import from_list, to_list, deserialize_uuids
+from slapp_py.strings import escape_characters
 
 
 class Player:
@@ -119,6 +120,11 @@ class Player:
         """The last known used name for the Player or UnknownPlayerName."""
         from core_classes.builtins import UnknownPlayerName
         return self.names[0] if len(self.names) > 0 else UnknownPlayerName
+
+    @property
+    def escape_names(self) -> List[str]:
+        """Return all the names as strings after escaping back-slashes."""
+        return list(map(lambda n: escape_characters(n.value, '\\'), self.names))
 
     @staticmethod
     def from_dict(obj: dict) -> 'Player':

@@ -1,8 +1,16 @@
+"""
+This slapipes module handles the communication between Slapp and Dola.
+The pipes to the Slapp.
+"""
+
+import asyncio
 import json
 import os
-import subprocess
+import traceback
+from asyncio import Queue
 from datetime import datetime
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Callable, Any, Awaitable
+from urllib.parse import quote
 from uuid import UUID
 
 from discord import Color, Embed
@@ -12,13 +20,89 @@ from helpers.dict_helper import from_list
 from helpers.str_helper import join, truncate
 from slapp_py.strings import escape_characters, attempt_link_source
 
-slapp_path = None
 MAX_RESULTS = 20
+slapp_write_queue: Queue[str] = Queue()
 
 
-def initialise_slapp():
-    global slapp_path
+async def _default_response_handler(success: bool, response: dict) -> None:
+    assert False, f"Slapp response handler not set. Discarding: {success=}, {response=}"
 
+
+response_function: Callable[[bool, dict], Awaitable[None]] = _default_response_handler
+
+
+async def _read_stdout(stdout):
+    global response_function
+    print('_read_stdout')
+    while True:
+        try:
+            response: str = (await stdout.readline()).decode('utf-8')
+            if not response:
+                print('stdout: (none response)')
+                await asyncio.sleep(1)
+            else:
+                print('stdout: ' + response)
+                if response.startswith('{'):
+                    response: dict = json.loads(response)
+                    await response_function(response.get("Message") == "OK", response)
+        except Exception as e:
+            print(f'_read_stdout EXCEPTION: {e}\n{traceback.format_exc()}')
+
+
+async def _read_stderr(stderr):
+    print('_read_stderr')
+    while True:
+        try:
+            response: str = (await stderr.readline()).decode('utf-8')
+            if not response:
+                print('stderr: (none response)')
+                await asyncio.sleep(1)
+            else:
+                print('stderr: ' + response)
+        except Exception as e:
+            print(f'_read_stderr EXCEPTION: {e}\n{traceback.format_exc()}')
+
+
+async def _write_stdin(stdin):
+    print('_write_stdin')
+    while True:
+        try:
+            while not slapp_write_queue.empty():
+                query = await slapp_write_queue.get()
+                print(f'_write_stdin: writing {query}')
+                stdin.write(f'{query}\n'.encode('utf-8'))
+                await stdin.drain()
+                await asyncio.sleep(0.1)
+            await asyncio.sleep(1)
+        except Exception as e:
+            print(f'_write_stdin EXCEPTION: {e}\n{traceback.format_exc()}')
+
+
+async def _run_slapp(slapp_path: str):
+    proc = await asyncio.create_subprocess_shell(
+        f'dotnet \"{slapp_path}\" \"should_not-have-any_results1\" --keepOpen',
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        encoding=None,  # encoding must be None
+        errors=None,  # errors must be None
+        shell=True,
+        limit=100 * 1024 * 1024,  # 100 MiB
+    )
+
+    await asyncio.gather(
+        _read_stderr(proc.stderr),
+        _read_stdout(proc.stdout),
+        _write_stdin(proc.stdin)
+    )
+    print("_run_slapp returned!")
+
+
+async def initialise_slapp(new_response_function: Callable[[bool, dict], Any]):
+    import subprocess
+    global response_function
+
+    print("Initialising Slapp ...")
     result = subprocess.run(['cd'], stdout=subprocess.PIPE, encoding='utf-8', shell=True)
     slapp_path = result.stdout.strip(" \r\n")
     print('cd: ' + slapp_path)
@@ -27,30 +111,16 @@ def initialise_slapp():
     slapp_path = os.path.join(slapp_path, 'venv', 'Slapp', 'SplatTagConsole.dll')
     assert os.path.isfile(slapp_path), f'Not a file: {slapp_path}'
 
+    print(f"Using Slapp found at {slapp_path}")
+    response_function = new_response_function
+    await _run_slapp(slapp_path)
 
-async def query_slapp(query) -> (bool, dict):
-    """Query Slapp. Returns success and the JSON response."""
-    # global slapp_process
-    # if slapp_process is None:
-    slapp_process = subprocess.Popen(
-        # f'dotnet \"{slapp_path}\" {query} --keepOpen',
-        f'dotnet \"{slapp_path}\" \"{query}\"',
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        encoding='utf-8',
-        errors='replace'
-    )
-    # else:
-    #     slapp_process.stdin.writelines([query])
-    #     await sleep(0.005)
 
-    while True:
-        response: str = slapp_process.stdout.readline()
-        if response.startswith('{'):
-            break
-    response: dict = json.loads(response)
-    print(response)
-    return response["Message"] == "OK", response
+async def query_slapp(query):
+    """Query Slapp. The response comes back through the callback function that was passed in initialise_slapp."""
+
+    print("Posting query to existing Slapp process...")
+    await slapp_write_queue.put(query)
 
 
 def process_slapp(response: dict, now: datetime) -> (Embed, Color):
@@ -109,7 +179,11 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             p = matched_players[i]
 
             # Transform names by adding a backslash to any backslashes.
-            names = list(map(lambda n: escape_characters(n, '\\'), p.names))
+            names = p.escape_names
+            current_name = \
+                (names[0] if len(names) else None) \
+                or (names[1] if len(names) > 1 else None) \
+                or "(Unnamed Player)"
 
             team_ids: List[UUID] = p.teams
             resolved_teams: List[Team] = []
@@ -172,7 +246,7 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             # If there's just the one matched player, move the sources to the next field.
             if matched_players_len == 1:
                 info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}'
-                builder.add_field(name=truncate(top500 + names[0], 256, ""),
+                builder.add_field(name=truncate(top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
@@ -182,7 +256,7 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             else:
                 info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}\n' \
                        f'_{player_sources}_'
-                builder.add_field(name=truncate(top500 + names[0], 256, ""),
+                builder.add_field(name=truncate(top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
@@ -228,7 +302,7 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             # If there's just the one matched team, move the sources to the next field.
             if matched_teams_len == 1:
                 info = f'{div_phrase}Players: {player_strings}'
-                builder.add_field(name=truncate(t.__str__(), 256, ""),
+                builder.add_field(name=truncate(t.__str__(), 256, "") or "Unnamed Team",
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
@@ -238,7 +312,7 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             else:
                 info = f'{div_phrase}Players: {player_strings}\n' \
                        f'_{team_sources}_'
-                builder.add_field(name=truncate(t.__str__(), 256, ""),
+                builder.add_field(name=truncate(t.__str__(), 256, "") or "Unnamed Team",
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 

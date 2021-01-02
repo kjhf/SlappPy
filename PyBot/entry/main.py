@@ -1,7 +1,9 @@
+import asyncio
 import os
 import re
 import sys
 import traceback
+from asyncio import Queue
 from datetime import datetime
 from typing import Optional, Union, List
 
@@ -17,6 +19,7 @@ from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
+slapp_ctx_queue: Queue[(Context, datetime)] = Queue()
 
 if __name__ == '__main__':
     intents = discord.Intents.default()
@@ -155,9 +158,8 @@ if __name__ == '__main__':
                             verification_message += f'The team {name} ({team_id}) has a player with no slug!\n'
                             continue
                         else:
-                            now = datetime.now()
-                            success, response = await query_slapp(player_slug)
-                            await send_slapp(ctx, now, success, response)
+                            await slapp_ctx_queue.put((ctx, datetime.now()))
+                            await query_slapp(player_slug)
                 else:
                     continue
 
@@ -174,9 +176,8 @@ if __name__ == '__main__':
     async def slapp(ctx: Context, *query):
         query: str = ' '.join(query)
         print('slapp called with query ' + query)
-        now = datetime.utcnow()
-        success, response = await query_slapp(query)
-        await send_slapp(ctx, now, success, response)
+        await slapp_ctx_queue.put((ctx, datetime.now()))
+        await query_slapp(query)
 
     @bot.event
     async def on_command_error(ctx, error):
@@ -231,7 +232,7 @@ if __name__ == '__main__':
                     if len(removed_fields):
                         message += 1
                         removed_fields.reverse()
-                        builder = Embed(title=f'Page {message}', colour=colour)
+                        builder = Embed(title=f'Page {message}', colour=colour, description='')
                         for field in removed_fields:
                             try:
                                 builder._fields.append(field)
@@ -248,6 +249,19 @@ if __name__ == '__main__':
         else:
             await ctx.send(content=f'Unexpected error from Slapp 🤔')
 
+    async def receive_slapp_response(success: bool, response: dict):
+        if slapp_ctx_queue.empty():
+            print(f"receive_slapp_response but queue is empty. Discarding result: {success=}, {response=}")
+        else:
+            ctx, now = await slapp_ctx_queue.get()
+            await send_slapp(ctx, now, success, response)
 
-    initialise_slapp()
-    bot.run(BOT_TOKEN)
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        asyncio.gather(
+            initialise_slapp(receive_slapp_response),
+            bot.start(BOT_TOKEN)
+        )
+    )
+    print("Main exited!")

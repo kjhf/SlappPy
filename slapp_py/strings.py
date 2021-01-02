@@ -17,8 +17,11 @@ def escape_characters(string: Union[str, dict], characters: str = '_*\\', escape
             for char in characters:
                 element = element.replace(char, escape_character + char)
     else:
+        if not isinstance(string, str):
+            string = string.__str__()
+
         for char in characters:
-            string = string.__str__().replace(char, escape_character + char)
+            string = string.replace(char, escape_character + char)
     return string
 
 
