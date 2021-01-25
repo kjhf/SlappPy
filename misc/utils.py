@@ -24,7 +24,21 @@ def save_to_file(path: str, content: Union[str, List[AnyStr]], overwrite: bool =
             the_file.writelines(content)
 
 
-def load_json_from_file(path: str) -> dict:
+def load_json_from_file(path: str) -> Union[dict, List[dict]]:
     """Load JSON from specified path"""
     with open(path, 'r', encoding='utf-8') as infile:
         return json.load(infile)
+
+
+def assert_is_dict_recursive(val: Union[dict, list, str, int], comment: str = ''):
+    if isinstance(val, str) or isinstance(val, int):
+        # This is good.
+        pass
+    elif isinstance(val, dict):
+        for element in val:
+            assert_is_dict_recursive(val[element], f'{comment}/{element}')
+    elif isinstance(val, list):
+        for element in val:
+            assert_is_dict_recursive(element, f'{comment}/values')
+    else:
+        assert False, f"This val is not a str/int, dict, or list: {comment} is {val=}"

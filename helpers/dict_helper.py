@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Any, List, Union
+from typing import TypeVar, Callable, Any, List, Union, Collection, Set, Dict
 from uuid import UUID
 
 T = TypeVar("T")
@@ -52,5 +52,13 @@ def to_list(f: Callable[[T], Union[dict, str]], x: Union[None, List[T], T]) -> L
     return [f(y) for y in x]
 
 
+def serialize_uuids(uuids: Collection[UUID]) -> List[str]:
+    return list(map(lambda x: x.__str__(), uuids))
+
+
 def deserialize_uuids(info: dict, key: str, default=None) -> List[UUID]:
     return from_list(lambda x: UUID(x), info.get(key, default))
+
+
+def add_set_by_key(dictionary: Dict[Any, Set], key: Any, values: Set):
+    dictionary[key] = dictionary.get(key, set()) | values

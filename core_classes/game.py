@@ -1,19 +1,15 @@
 from uuid import UUID
-from typing import List
+from typing import List, Set, Collection
 
 from core_classes.score import Score
-from helpers.dict_helper import deserialize_uuids
+from helpers.dict_helper import deserialize_uuids, serialize_uuids
 
 
 class Game:
-    score: Score
-    players: List[UUID]
-    teams: List[UUID]
-
-    def __init__(self, score: Score = None, players: List[UUID] = None, teams: List[UUID] = None):
+    def __init__(self, score: Score = None, players: Collection[UUID] = None, teams: Collection[UUID] = None):
         self.score: Score = score or Score()
-        self.players: List[UUID] = players or []
-        self.teams: List[UUID] = teams or []
+        self.players: Set[UUID] = players or set()
+        self.teams: Set[UUID] = teams or set()
 
     @staticmethod
     def from_dict(obj: dict) -> 'Game':
@@ -29,7 +25,7 @@ class Game:
         if len(self.score.points) > 0:
             result["Score"] = self.score.to_dict()
         if len(self.players) > 0:
-            result["Players"] = map(str, self.players)
+            result["Players"] = serialize_uuids(self.players)
         if len(self.teams) > 0:
-            result["Teams"] = map(str, self.teams)
+            result["Teams"] = serialize_uuids(self.teams)
         return result

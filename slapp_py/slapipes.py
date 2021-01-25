@@ -9,13 +9,15 @@ import os
 import traceback
 from asyncio import Queue
 from datetime import datetime
-from typing import List, Dict, Union, Callable, Any, Awaitable
-from urllib.parse import quote
+from typing import List, Dict, Union, Callable, Any, Awaitable, Optional
 from uuid import UUID
 
 from discord import Color, Embed
 
 from PyBot.helpers.embed_helper import to_embed
+from core_classes.bracket import Bracket
+from core_classes.player import Player
+from core_classes.team import Team
 from helpers.dict_helper import from_list
 from helpers.str_helper import join, truncate
 from slapp_py.strings import escape_characters, attempt_link_source
@@ -124,14 +126,14 @@ async def query_slapp(query):
 
 
 def process_slapp(response: dict, now: datetime) -> (Embed, Color):
-    from core_classes.player import Player
-    from core_classes.team import Team
-    
     matched_players: List[Player] = from_list(lambda x: Player.from_dict(x), response.get("Players"))
     matched_players_len = len(matched_players)
     matched_teams: List[Team] = from_list(lambda x: Team.from_dict(x), response.get("Teams"))
     matched_teams_len = len(matched_teams)
     known_teams: Dict[str, Team] = {}
+    placements_for_players: Dict[str, Dict[str, List[Bracket]]] = {}
+    """Dictionary keyed by Player id, of value Dictionary keyed by Source id of value Placements list"""
+
     for team_id in response.get("AdditionalTeams"):
         known_teams[team_id.__str__()] = Team.from_dict(response.get("AdditionalTeams")[team_id])
     for team in matched_teams:
@@ -147,8 +149,20 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             matched_players_for_teams[team_id].append(player_tuple_for_team)
 
     sources: Dict[str, str] = {}
+    low_ink_sources: Dict[str, str] = {}
+
     for source_id in response.get("Sources"):
-        sources[source_id] = response.get("Sources")[source_id]
+        source_name = response.get("Sources")[source_id]
+        sources[source_id] = source_name
+        if 'low-ink-' in source_name:
+            low_ink_sources[source_id] = source_name
+
+    for player_id in response.get("PlacementsForPlayers"):
+        placements_for_players[player_id.__str__()] = {}
+        for source_id in response.get("PlacementsForPlayers")[player_id]:
+            placements_for_players[player_id][source_id] = []
+            for bracket in response.get("PlacementsForPlayers")[player_id][source_id]:
+                placements_for_players[player_id][source_id].append(Bracket.from_dict(bracket))
 
     has_matched_players = matched_players_len != 0
     has_matched_teams = matched_teams_len != 0
@@ -242,11 +256,14 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             player_sources: str = \
                 "\n ".join(list(map(lambda s: attempt_link_source(s), player_source_names)))
             top500 = "👑 " if p.top500 else ''
+            country_flag = p.country_flag + ' ' if p.country_flag else ''
+            low_ink_tourney = has_won_low_ink(placements_for_players, low_ink_sources, p)
+            banned_from_low_ink = f"🚫 Won LowInk in {low_ink_tourney}\n" if low_ink_tourney else ''
 
             # If there's just the one matched player, move the sources to the next field.
             if matched_players_len == 1:
-                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}'
-                builder.add_field(name=truncate(top500 + current_name, 256, "") or ' ',
+                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}{banned_from_low_ink}'
+                builder.add_field(name=truncate(country_flag + top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
@@ -256,7 +273,7 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             else:
                 info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}\n' \
                        f'_{player_sources}_'
-                builder.add_field(name=truncate(top500 + current_name, 256, "") or ' ',
+                builder.add_field(name=truncate(country_flag + top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
@@ -321,3 +338,27 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
              (f'Only the first {MAX_RESULTS} results are shown for players and teams.' if show_limited else ''),
         icon_url="https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png")
     return builder, embed_colour
+
+
+def has_won_low_ink(placements_for_players: Dict[str, Dict[str, List[Bracket]]],
+                    low_ink_sources: Dict[str, str],
+                    p: Player) -> Optional[str]:
+    """
+    Get if the player has won Low Ink (and is therefore banned).
+    Returns the tournament they won (or None)
+    :param placements_for_players: The Placements dictionary
+    :param low_ink_sources: The Sources, pre-filtered to LowInk sources
+    :param p: The Player
+    :return: The tournament UUID they won (or None)
+    """
+
+    if p.guid.__str__() in placements_for_players:
+        sources = placements_for_players[p.guid.__str__()]
+        for source in sources:
+            if source in low_ink_sources:
+                brackets = placements_for_players[p.guid.__str__()][source]
+                for bracket in brackets:
+                    if bracket.name.lower() == 'alpha' or bracket.name.lower() == 'top cut':
+                        if p.guid in bracket.placements.players_by_placement[1]:
+                            return low_ink_sources[source]  # return the name.
+    return None

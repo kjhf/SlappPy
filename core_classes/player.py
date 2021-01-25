@@ -8,11 +8,14 @@ from core_classes.name import Name
 from core_classes.socials.sendou import Sendou
 from core_classes.socials.twitch import Twitch
 from core_classes.socials.twitter import Twitter
-from helpers.dict_helper import from_list, to_list, deserialize_uuids
+from helpers.dict_helper import from_list, to_list, deserialize_uuids, serialize_uuids
 from slapp_py.strings import escape_characters
 
 
 class Player:
+    _COUNTRY_FLAG_OFFSET = 0x1F1A5
+    """This is the result of '🇦' - 'A'"""
+
     battlefy: Battlefy
     """Back-store for player's Battlefy information."""
 
@@ -108,7 +111,7 @@ class Player:
         self.twitter_profiles = twitter_profiles or []
         self.twitch_profiles = twitch_profiles or []
         self.weapons = weapons or []
-        self.country = country
+        self.country = country.upper() if len(country) == 2 else None
         self.top500 = top500
 
         if isinstance(guid, str):
@@ -120,6 +123,15 @@ class Player:
         """The last known used name for the Player or UnknownPlayerName."""
         from core_classes.builtins import UnknownPlayerName
         return self.names[0] if len(self.names) > 0 else UnknownPlayerName
+
+    @property
+    def country_flag(self) -> Optional[str]:
+        """Country information as a flag. May be None."""
+        if not self.country:
+            return None
+
+        return chr(ord(self.country[0]) + Player._COUNTRY_FLAG_OFFSET) + \
+            chr(ord(self.country[1]) + Player._COUNTRY_FLAG_OFFSET)
 
     @property
     def escape_names(self) -> List[str]:
@@ -156,15 +168,15 @@ class Player:
             result["Discord"] = self.discord.to_dict()
         if len(self.friend_codes) > 0:
             result["FriendCode"] = to_list(lambda x: FriendCode.to_dict(x), self.friend_codes)
-        result["Id"] = self.guid
+        result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
             result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
         if len(self.sendou_profiles) > 0:
             result["Sendou"] = to_list(lambda x: Sendou.to_dict(x), self.sendou_profiles)
         if len(self.sources) > 0:
-            result["S"] = map(str, self.sources)
+            result["S"] = serialize_uuids(self.sources)
         if len(self.teams) > 0:
-            result["Teams"] = map(str, self.teams)
+            result["Teams"] = serialize_uuids(self.teams)
         if self.top500:
             result["Top500"] = self.top500
         if len(self.twitch_profiles) > 0:
