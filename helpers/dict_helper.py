@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Any, List, Union, Collection, Set, Dict
+from typing import TypeVar, Callable, Any, List, Union, Collection, Set, Dict, Iterable
 from uuid import UUID
 
 T = TypeVar("T")
@@ -22,7 +22,7 @@ def from_list(f: Callable[[Any], T], x: Union[None, List[T], T]) -> List[T]:
     if not x:
         return []
 
-    if not isinstance(x, list):
+    if not isinstance(x, Iterable):
         x = [x]
 
     if len(x) < 1:
@@ -43,7 +43,7 @@ def to_list(f: Callable[[T], Union[dict, str]], x: Union[None, List[T], T]) -> L
     if not x:
         return []
 
-    if not isinstance(x, list):
+    if not isinstance(x, Iterable):
         x = [x]
 
     if len(x) < 1:

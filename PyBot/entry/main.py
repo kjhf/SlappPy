@@ -173,8 +173,7 @@ if __name__ == '__main__':
         aliases=['slapp', 'splattag'],
         help=f'{COMMAND_PREFIX}slapp <query>',
         pass_ctx=True)
-    async def slapp(ctx: Context, *query):
-        query: str = ' '.join(query)
+    async def slapp(ctx: Context, *, query):
         print('slapp called with query ' + query)
         await slapp_ctx_queue.put((ctx, datetime.now()))
         await query_slapp(query)
@@ -207,8 +206,8 @@ if __name__ == '__main__':
 
         await bot.change_presence(activity=discord.Game(name=presence))
 
-    async def send_slapp(ctx: Context, now: datetime, success: bool, response: dict):
-        if success:
+    async def send_slapp(ctx: Context, now: datetime, success_message: str, response: dict):
+        if success_message == "OK":
             try:
                 builder, colour = process_slapp(response, now)
             except Exception as e:
@@ -247,14 +246,14 @@ if __name__ == '__main__':
                 print(traceback.format_exc())
                 print(f'Attempted to send:\n{builder.to_dict()}')
         else:
-            await ctx.send(content=f'Unexpected error from Slapp 🤔')
+            await ctx.send(content=f'Unexpected error from Slapp 🤔: {success_message}')
 
-    async def receive_slapp_response(success: bool, response: dict):
+    async def receive_slapp_response(success_message: str, response: dict):
         if slapp_ctx_queue.empty():
-            print(f"receive_slapp_response but queue is empty. Discarding result: {success=}, {response=}")
+            print(f"receive_slapp_response but queue is empty. Discarding result: {success_message=}, {response=}")
         else:
             ctx, now = await slapp_ctx_queue.get()
-            await send_slapp(ctx, now, success, response)
+            await send_slapp(ctx, now, success_message, response)
 
 
     loop = asyncio.get_event_loop()

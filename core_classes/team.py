@@ -76,6 +76,12 @@ class Team:
         self.guid = guid or uuid4()
 
     @property
+    def battlefy_persistent_id_strings(self) -> List[str]:
+        """The known Battlefy Persistent Ids of the team. Can be Empty."""
+        return [social.value for social in self.battlefy_persistent_team_ids] \
+            if len(self.battlefy_persistent_team_ids) > 0 else []
+
+    @property
     def battlefy_persistent_team_id(self) -> Optional[Name]:
         """The last known Battlefy Persistent Id of the team. Can be None."""
         return self.battlefy_persistent_team_ids[0] if len(self.battlefy_persistent_team_ids) > 0 else None

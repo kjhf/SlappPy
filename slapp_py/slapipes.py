@@ -4,12 +4,14 @@ The pipes to the Slapp.
 """
 
 import asyncio
+import base64
+import binascii
 import json
 import os
 import traceback
 from asyncio import Queue
 from datetime import datetime
-from typing import List, Dict, Union, Callable, Any, Awaitable, Optional
+from typing import List, Dict, Union, Callable, Any, Awaitable
 from uuid import UUID
 
 from discord import Color, Embed
@@ -26,11 +28,11 @@ MAX_RESULTS = 20
 slapp_write_queue: Queue[str] = Queue()
 
 
-async def _default_response_handler(success: bool, response: dict) -> None:
-    assert False, f"Slapp response handler not set. Discarding: {success=}, {response=}"
+async def _default_response_handler(success_message: str, response: dict) -> None:
+    assert False, f"Slapp response handler not set. Discarding: {success_message=}, {response=}"
 
 
-response_function: Callable[[bool, dict], Awaitable[None]] = _default_response_handler
+response_function: Callable[[str, dict], Awaitable[None]] = _default_response_handler
 
 
 async def _read_stdout(stdout):
@@ -38,15 +40,16 @@ async def _read_stdout(stdout):
     print('_read_stdout')
     while True:
         try:
-            response: str = (await stdout.readline()).decode('utf-8')
+            response = (await stdout.readline())
             if not response:
                 print('stdout: (none response)')
                 await asyncio.sleep(1)
+            elif response.startswith(b"eyJNZXNzYWdlIjoiT"):  # This is the b64 start of a Slapp message.
+                decoded_bytes = base64.b64decode(response)
+                response = json.loads(str(decoded_bytes, "utf-8"))
+                await response_function(response.get("Message", "Response does not contain Message."), response)
             else:
-                print('stdout: ' + response)
-                if response.startswith('{'):
-                    response: dict = json.loads(response)
-                    await response_function(response.get("Message") == "OK", response)
+                print('stdout: ' + response.decode('utf-8'))
         except Exception as e:
             print(f'_read_stdout EXCEPTION: {e}\n{traceback.format_exc()}')
 
@@ -100,7 +103,7 @@ async def _run_slapp(slapp_path: str):
     print("_run_slapp returned!")
 
 
-async def initialise_slapp(new_response_function: Callable[[bool, dict], Any]):
+async def initialise_slapp(new_response_function: Callable[[str, dict], Any]):
     import subprocess
     global response_function
 
@@ -118,11 +121,17 @@ async def initialise_slapp(new_response_function: Callable[[bool, dict], Any]):
     await _run_slapp(slapp_path)
 
 
-async def query_slapp(query):
+async def query_slapp(query: str):
     """Query Slapp. The response comes back through the callback function that was passed in initialise_slapp."""
 
-    print("Posting query to existing Slapp process...")
-    await slapp_write_queue.put(query)
+    if '--exactCase' in query:
+        query = query.replace('--exactCase', '') + " --exactCase"
+
+    if '--queryIsRegex' in query:
+        query = query.replace('--queryIsRegex', '') + " --queryIsRegex"
+
+    print(f"Posting {query=} to existing Slapp process...")
+    await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8"))
 
 
 def process_slapp(response: dict, now: datetime) -> (Embed, Color):
@@ -149,13 +158,10 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
             matched_players_for_teams[team_id].append(player_tuple_for_team)
 
     sources: Dict[str, str] = {}
-    low_ink_sources: Dict[str, str] = {}
 
     for source_id in response.get("Sources"):
         source_name = response.get("Sources")[source_id]
         sources[source_id] = source_name
-        if 'low-ink-' in source_name:
-            low_ink_sources[source_id] = source_name
 
     for player_id in response.get("PlacementsForPlayers"):
         placements_for_players[player_id.__str__()] = {}
@@ -257,21 +263,34 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
                 "\n ".join(list(map(lambda s: attempt_link_source(s), player_source_names)))
             top500 = "👑 " if p.top500 else ''
             country_flag = p.country_flag + ' ' if p.country_flag else ''
-            low_ink_tourney = has_won_low_ink(placements_for_players, low_ink_sources, p)
-            banned_from_low_ink = f"🚫 Won LowInk in {low_ink_tourney}\n" if low_ink_tourney else ''
+            notable_results = get_first_placements(placements_for_players, sources, p)
 
             # If there's just the one matched player, move the sources to the next field.
             if matched_players_len == 1:
-                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}{banned_from_low_ink}'
+                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}'
                 builder.add_field(name=truncate(country_flag + top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
+
+                if len(notable_results):
+                    notable_results_str = ''
+                    for win in notable_results:
+                        notable_results_str += '🏆 Won ' + win + '\n'
+
+                    builder.add_field(name='\tNotable Wins:',
+                                      value=truncate(notable_results_str, 1023, "…_"),
+                                      inline=False)
 
                 builder.add_field(name='\tSources:',
                                   value=truncate('_' + player_sources + '_', 1023, "…_"),
                                   inline=False)
             else:
-                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}\n' \
+                if len(notable_results):
+                    notable_results_str = '🏆 Won ' + ', '.join(notable_results) + '\n'
+                else:
+                    notable_results_str = ''
+
+                info = f'{other_names}{current_team}{old_teams}{twitch}{twitter}{battlefy}{notable_results_str}\n' \
                        f'_{player_sources}_'
                 builder.add_field(name=truncate(country_flag + top500 + current_name, 256, "") or ' ',
                                   value=truncate(info, 1023, "…_"),
@@ -340,25 +359,68 @@ def process_slapp(response: dict, now: datetime) -> (Embed, Color):
     return builder, embed_colour
 
 
+def get_first_placements(placements_for_players: Dict[str, Dict[str, List[Bracket]]],
+                         source_ids_to_name: Dict[str, str],
+                         p: Player) -> List[str]:
+    result = []
+    print(f"get_first_placements: Searching {p.guid.__str__()}, "
+          f"has persistent ids: {', '.join(p.battlefy.battlefy_persistent_id_strings)}")
+    if p.guid.__str__() in placements_for_players:
+        print(f"get_first_placements: Found {p.guid.__str__()} in placements_for_players")
+        sources = placements_for_players[p.guid.__str__()]
+        for source_id in sources:
+            brackets = placements_for_players[p.guid.__str__()][source_id]
+            print(f"get_first_placements: Looking at {len(brackets)} brackets under {source_ids_to_name[source_id]}")
+            for bracket in brackets:
+                first_place_ids = [player_id.__str__() for player_id in bracket.placements.players_by_placement[1]]
+                print(f"get_first_placements: {bracket.name=}: Looking for ids {', '.join(first_place_ids)}")
+                if p.guid.__str__() in first_place_ids:
+                    print(f"get_first_placements: p.guid is in bracket.placements.players_by_placement[1]!")
+                    result.append(bracket.name + ' in ' + source_ids_to_name[source_id])
+                elif p.guid in bracket.players:
+                    found = False
+                    print(f"get_first_placements: Found the player guid in the bracket. "
+                          f"Searching {bracket.placements.players_by_placement} ranks.")
+                    for place in bracket.placements.players_by_placement:
+                        p_ids = [player_id.__str__() for player_id in bracket.placements.players_by_placement[place]]
+                        if p.guid.__str__() in p_ids:
+                            print(f"get_first_placements: The player placed [{place}].")
+                            found = True
+
+                    if not found:
+                        print(f"get_first_placements: Didn't find the guid in placements. Here they are: ")
+                        print(f"get_first_placements: " + json.dumps(bracket.placements.players_by_placement,
+                                                                     default=str, indent=2))
+                else:
+                    print(f"get_first_placements: Did not find the player guid in this bracket.")
+
+    return result
+
+
 def has_won_low_ink(placements_for_players: Dict[str, Dict[str, List[Bracket]]],
-                    low_ink_sources: Dict[str, str],
-                    p: Player) -> Optional[str]:
+                    source_ids_to_name: Dict[str, str],
+                    p: Player) -> List[str]:
     """
     Get if the player has won Low Ink (and is therefore banned).
     Returns the tournament they won (or None)
     :param placements_for_players: The Placements dictionary
-    :param low_ink_sources: The Sources, pre-filtered to LowInk sources
+    :param source_ids_to_name: The source lookup dictionary
     :param p: The Player
-    :return: The tournament UUID they won (or None)
+    :return: The tournament name they won (or None)
     """
 
+    result = []
     if p.guid.__str__() in placements_for_players:
         sources = placements_for_players[p.guid.__str__()]
-        for source in sources:
-            if source in low_ink_sources:
-                brackets = placements_for_players[p.guid.__str__()][source]
+        for source_id in sources:
+            if source_id in filter_low_ink_sources(source_ids_to_name):
+                brackets = placements_for_players[p.guid.__str__()][source_id]
                 for bracket in brackets:
-                    if bracket.name.lower() == 'alpha' or bracket.name.lower() == 'top cut':
+                    if 'alpha' in bracket.name.lower() or 'top cut' in bracket.name.lower():
                         if p.guid in bracket.placements.players_by_placement[1]:
-                            return low_ink_sources[source]  # return the name.
-    return None
+                            result.append(source_ids_to_name[source_id])
+    return result
+
+
+def filter_low_ink_sources(sources: Dict[str, str]) -> Dict[str, str]:
+    return {k: v for k, v in sources.items() if 'low-ink-' in v}

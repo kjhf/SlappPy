@@ -27,6 +27,12 @@ class Battlefy:
                f"Usernames: [{join(', ', self.usernames)}], " \
                f"Ids: [{join(', ', self.persistent_ids)}]"
 
+    @property
+    def battlefy_persistent_id_strings(self) -> List[str]:
+        """The known Battlefy Persistent Ids of the Player. Can be Empty."""
+        return [social.value for social in self.persistent_ids] \
+            if len(self.persistent_ids) > 0 else []
+
     @staticmethod
     def from_dict(obj: dict) -> 'Battlefy':
         assert isinstance(obj, dict)

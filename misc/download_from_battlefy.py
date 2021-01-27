@@ -15,7 +15,10 @@ TEAMS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s/teams'
 
 def download_from_battlefy(ids: Union[str, List[str]]) -> dict:
     if isinstance(ids, str):
-        ids = [ids]
+        if ids.startswith('['):
+            ids = json.loads(ids)
+        else:
+            ids = [ids]
 
     for id_to_fetch in ids:
         tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT % id_to_fetch)
@@ -44,13 +47,10 @@ def download_from_battlefy(ids: Union[str, List[str]]) -> dict:
             makedirs('./teams')
         save_to_file(f'./teams/{name}', json.dumps(team_contents))
         print(f'OK! (Saved read teams {name})')
-        return team_contents
+        yield team_contents
 
 
 if __name__ == '__main__':
-    input_ids = \
-        [
-            input('id?')
-        ]
-
-    download_from_battlefy(input_ids)
+    input_ids = input('id or [json, ids]?')
+    for team in download_from_battlefy(input_ids):
+        pass

@@ -9,7 +9,7 @@ def fetch_address(address) -> dict:
     print(f'Getting from {address}')
 
     response = requests.get(address)
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Bad response from {address} ({response.status_code})"
 
     # Validate json content
     return json.loads(response.content)

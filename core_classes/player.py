@@ -111,7 +111,7 @@ class Player:
         self.twitter_profiles = twitter_profiles or []
         self.twitch_profiles = twitch_profiles or []
         self.weapons = weapons or []
-        self.country = country.upper() if len(country) == 2 else None
+        self.country = country.upper() if country and len(country) == 2 else None
         self.top500 = top500
 
         if isinstance(guid, str):

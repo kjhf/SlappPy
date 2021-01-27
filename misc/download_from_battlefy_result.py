@@ -2,7 +2,8 @@ import glob
 import json
 import sys
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Any, Optional, Union
+from uuid import UUID
 
 from dateutil.parser import isoparse
 from os import makedirs
@@ -10,8 +11,10 @@ from os.path import exists, join, isfile
 
 from core_classes.bracket import Bracket
 from core_classes.game import Game
+from core_classes.player import Player
 from core_classes.score import Score
 from core_classes.source import Source
+from core_classes.team import Team
 from helpers.dict_helper import add_set_by_key
 from tokens import SLAPP_APP_DATA, CLOUD_BACKEND
 from misc import utils
@@ -138,6 +141,46 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
     return _stage_contents
 
 
+def player_local_id_to_slapp_id(_local_player_id: Union[str, UUID],
+                                _player_id_to_persistent_id: Dict[str, str],
+                                _players: List[Player]) -> Optional[UUID]:
+    # Search for the persistent id for this player.
+    _persistent_id = _player_id_to_persistent_id.get(_local_player_id.__str__())
+    if _persistent_id:
+        return player_persistent_id_to_slapp_id(_persistent_id, _players)
+    else:
+        # print(f'Could not translate local player ID ({_local_player_id}) '
+        #       f'into a persistent Player Id.'
+        #       # f'_player_id_to_persistent_id={", ".join(_player_id_to_persistent_id.keys())}')
+        return None
+
+
+def player_persistent_id_to_slapp_id(_persistent_player_id: Union[str, UUID], _players: List[Player]) -> Optional[UUID]:
+    # Search for the Slapp record of this player.
+    _found_player = next(
+        (player_in_source for player_in_source in _players
+         if _persistent_player_id.__str__() in player_in_source.battlefy.battlefy_persistent_id_strings), None)
+    if _found_player:
+        return _found_player.guid
+    else:
+        print(f'Could not translate persistentPlayerID ({_persistent_player_id}) '
+              f'into a Slapp Player Id.')
+        return None
+
+
+def team_persistent_id_to_slapp_id(_persistent_team_id: Union[str, UUID], _teams: List[Team]) -> Optional[UUID]:
+    # Search for the Slapp record of this team.
+    _found_team = next(
+        (team_in_source for team_in_source in _teams
+         if _persistent_team_id.__str__() in team_in_source.battlefy_persistent_id_strings), None)
+    if _found_team:
+        return _found_team.guid
+    else:
+        print(f'Could not translate persistentTeamID ({_persistent_team_id}) '
+              f'into a Slapp Team Id.')
+        return None
+
+
 if __name__ == '__main__':
     # Find the latest snapshot file.
     matched_snapshot_files = glob.glob(join(SLAPP_APP_DATA, f'Snapshot-Sources-*.json'))
@@ -184,6 +227,7 @@ if __name__ == '__main__':
 
                 # We can get the relevant team from the sources file and matching against battlefy persistent team id
                 # For now, let's store the teams in the bracket information - we'll have to convert them later.
+                player_id_to_persistent_id_lookup = dict()
                 for match in stage_contents["matches"]:
                     if match["isBye"]:
                         continue
@@ -203,21 +247,23 @@ if __name__ == '__main__':
                         print(f"Incomplete team data, see {team_result_1=} or {team_result_2=}")
                         continue
 
-                    tournament_player_ids_to_persistent = {}
-
-                    game.teams.add(team1["persistentTeamID"])
+                    game.teams.add(team_persistent_id_to_slapp_id(team1["persistentTeamID"], source.teams))
                     for player_dict in team1.get("players", []):
                         player_persistent_id = player_dict.get("persistentPlayerID")  # else None
                         if player_persistent_id:
-                            game.players.add(player_persistent_id)
-                            tournament_player_ids_to_persistent[player_dict.get("_id")] = player_persistent_id
+                            game.players.add(player_persistent_id_to_slapp_id(player_persistent_id, source.players))
+                            player_id_to_persistent_id_lookup[player_dict["_id"]] = player_persistent_id
+                        else:
+                            print(f"Skipping player in {json.dumps(player_dict)} - there's no persistentPlayerID.")
 
-                    game.teams.add(team2["persistentTeamID"])
+                    game.teams.add(team_persistent_id_to_slapp_id(team2["persistentTeamID"], source.teams))
                     for player_dict in team2.get("players", []):
                         player_persistent_id = player_dict.get("persistentPlayerID")  # else None
                         if player_persistent_id:
-                            game.players.add(player_persistent_id)
-                            tournament_player_ids_to_persistent[player_dict.get("_id")] = player_persistent_id
+                            game.players.add(player_persistent_id_to_slapp_id(player_persistent_id, source.players))
+                            player_id_to_persistent_id_lookup[player_dict["_id"]] = player_persistent_id
+                        else:
+                            print(f"Skipping player in {json.dumps(player_dict)} - there's no persistentPlayerID.")
 
                     game.score = Score([team_result_1["score"], team_result_2["score"]])
                     bracket.matches.add(game)
@@ -226,46 +272,56 @@ if __name__ == '__main__':
 
                     # Add placements
                     standings_contents = get_or_fetch_standings_file(tourney_id, stage_id)
-                    for standing_node in standings_contents:
-                        place = standings_contents["place"]
+                    if not standings_contents:
+                        print(f"No content in the standings file {tourney_id=}, {stage_id=}")
+                        continue
 
-                        player_uuids_set = set()
+                    # If place is present (i.e. for finals), order by that.
+                    if standings_contents[0].get('place'):
+                        standings_placements = \
+                            sorted(standings_contents,
+                                   key=lambda k:
+                                   (
+                                       int(k["place"]),
+                                       k["team"]["name"]
+                                   ))
+                    else:
+                        # Otherwise, work out the order:
+                        #  1. The team's match wins ["matchWinPercentage"]
+                        #  2. The opponent's match win percentage ["opponentsMatchWinPercentage"]
+                        #  3. The team's game win percentage ["gameWinPercentage"]
+                        #  4. The opponent's opponent's match win percentage ["opponentsOpponentsMatchWinPercentage"]
+                        standings_placements = \
+                            sorted(standings_contents,
+                                   key=lambda k:
+                                   (
+                                      int(k["matchWinPercentage"]),
+                                      int(k["opponentsMatchWinPercentage"]),
+                                      int(k["gameWinPercentage"]),
+                                      int(k["opponentsOpponentsMatchWinPercentage"])
+                                   ), reverse=True)
 
-                        # For each player id, attempt to convert to a Slapp uuid
-                        for player_id in set(standings_contents["team"]["playerIDs"]):
-                            persistent_player_id = tournament_player_ids_to_persistent.get(player_id)
-                            if persistent_player_id:
-                                # First, search persistent ids.
-                                found_player = next((player_in_source for player_in_source in source.players
-                                                     if player_id in player_in_source.battlefy.persistent_ids), None)
-                                if found_player:
-                                    player_uuids_set.add(found_player.guid)
-                                else:
-                                    print(f'Could not translate persistentPlayerID ({persistent_player_id}) '
-                                          f'into a Slapp Player Id.')
-                            else:
-                                print(f'Could not translate playerID ({player_id}) into a Slapp Player Id.')
-
-                        # For each team id, attempt to convert to a Slapp uuid
-                        team_uuid_as_set = set()
-
-                        # First, search persistent ids.
-                        team_id = standings_contents["team"]["persistentTeamID"]
-                        found_team = next((team_in_source
-                                           for team_in_source in source.teams
-                                           if team_id in team_in_source.battlefy_persistent_team_ids), None)
-                        if found_team:
-                            team_uuid_as_set.add(found_team.guid)
-                        else:
-                            print(f'Could not translate persistentTeamID ({team_id}) into a Slapp Team Id.')
+                    for i, standing_node in enumerate(standings_placements):
+                        place = (i + 1)
+                        standing_node: Dict[str, Any]
 
                         add_set_by_key(dictionary=bracket.placements.players_by_placement,
                                        key=place,
-                                       values=player_uuids_set)
+                                       values={
+                                           player_local_id_to_slapp_id(
+                                               _local_player_id=local_id,
+                                               _player_id_to_persistent_id=player_id_to_persistent_id_lookup,
+                                               _players=source.players
+                                           ) or '' for local_id in standing_node["team"]["playerIDs"]
+                                       })
 
                         add_set_by_key(dictionary=bracket.placements.teams_by_placement,
                                        key=place,
-                                       values=team_uuid_as_set)
+                                       values={
+                                           team_persistent_id_to_slapp_id(standing_node["team"]["persistentTeamID"],
+                                                                          source.teams)
+                                           or ''
+                                       })
 
                 # Add to the Source
                 source.brackets.append(bracket)
@@ -275,7 +331,8 @@ if __name__ == '__main__':
             dict_to_save = source.to_dict()
             utils.assert_is_dict_recursive(dict_to_save)
             sources.append(dict_to_save)
-            json.dump(sources, snapshot_path + "_edited.json")
+            utils.save_to_file(path=snapshot_path + ".edited.json",
+                               content=json.dumps(sources, default=str, indent=2))
             # TODO:
             #  Do clout calculator and get if banned from Low Ink status
             #  Then: Load in Slapp and check compatibility
