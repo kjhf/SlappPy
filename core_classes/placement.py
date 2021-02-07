@@ -1,45 +1,41 @@
-from typing import List, Optional, Collection, Set, Dict
+from typing import Optional, Dict, Iterable, Union
 from uuid import UUID
 
-from helpers.dict_helper import deserialize_uuids, serialize_uuids
+from helpers.dict_helper import serialize_uuids_as_dict, deserialize_uuids_from_dict
 
 
 class Placement:
     def __init__(self,
-                 players_by_placement: Optional[Dict[int, Set[UUID]]] = None,
-                 teams_by_placement: Optional[Dict[int, Set[UUID]]] = None):
-        self.players_by_placement: Dict[int, Set[UUID]] = players_by_placement or dict()
-        self.teams_by_placement: Dict[int, Set[UUID]] = teams_by_placement or dict()
+                 players_by_placement: Optional[Dict[Union[int, str], Iterable[UUID]]] = None,
+                 teams_by_placement: Optional[Dict[Union[int, str], Iterable[UUID]]] = None):
+        """
+        Construct a placement with the players and teams who played in dictionaries by ranking.
 
-    @staticmethod
-    def deserialize_placement_dict(placement: dict, key: str) -> Dict[int, Set[UUID]]:
-        assert isinstance(placement, dict)
-        assert isinstance(placement[key], dict)
-        result = {}
-        for rank in placement[key]:
-            result[int(rank)] = set(deserialize_uuids(placement[key], rank))
-        return result
+        :param players_by_placement: A dictionary containing ranks (int or str) with player uuid values.
+        :param teams_by_placement: A dictionary containing ranks (int or str) with team uuid values.
+        """
+        self.players_by_placement = dict()
+        if players_by_placement:
+            for rank in players_by_placement:
+                self.players_by_placement[int(rank)] = set(players_by_placement[rank])
+
+        self.teams_by_placement = dict()
+        if teams_by_placement:
+            for rank in teams_by_placement:
+                self.teams_by_placement[int(rank)] = set(teams_by_placement[rank])
 
     @staticmethod
     def from_dict(obj: dict) -> 'Placement':
         assert isinstance(obj, dict)
         return Placement(
-            players_by_placement=Placement.deserialize_placement_dict(obj, "PlayersByPlacement"),
-            teams_by_placement=Placement.deserialize_placement_dict(obj, "TeamsByPlacement")
+            players_by_placement=deserialize_uuids_from_dict(obj.get("PlayersByPlacement", {})),
+            teams_by_placement=deserialize_uuids_from_dict(obj.get("TeamsByPlacement", {}))
         )
 
     def to_dict(self) -> dict:
         result = {}
         if len(self.players_by_placement) > 0:
-            result["PlayersByPlacement"] = Placement.serialize_placement_dict(self.players_by_placement)
+            result["PlayersByPlacement"] = serialize_uuids_as_dict(self.players_by_placement)
         if len(self.teams_by_placement) > 0:
-            result["TeamsByPlacement"] = Placement.serialize_placement_dict(self.teams_by_placement)
-        return result
-
-    @staticmethod
-    def serialize_placement_dict(placement: Dict[int, Set[UUID]]) -> Dict[str, List[str]]:
-        assert isinstance(placement, dict)
-        result = {}
-        for rank in placement:
-            result[rank.__str__()] = serialize_uuids(placement[rank])
+            result["TeamsByPlacement"] = serialize_uuids_as_dict(self.teams_by_placement)
         return result

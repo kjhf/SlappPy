@@ -4,7 +4,6 @@ import re
 import sys
 import traceback
 from asyncio import Queue
-from datetime import datetime
 from typing import Optional, Union, List
 
 import discord
@@ -14,12 +13,12 @@ from discord.ext import commands
 from discord.ext.commands import Bot, Context, CommandNotFound
 
 from helpers.str_helper import equals_ignore_case
-from slapp_py.slapipes import initialise_slapp, query_slapp, process_slapp
+from slapp_py.slapipes import initialise_slapp, query_slapp, process_slapp, slapp_describe
 from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
-slapp_ctx_queue: Queue[(Context, datetime)] = Queue()
+slapp_ctx_queue: Queue[Context] = Queue()
 
 if __name__ == '__main__':
     intents = discord.Intents.default()
@@ -116,15 +115,17 @@ if __name__ == '__main__':
         description="Verify a signed-up team.",
         help=f'{COMMAND_PREFIX}verify <team_slug>',
         pass_ctx=True)
-    async def verify(ctx: Context, team_slug_or_confirmation: Optional[str]):
-        november_2020_low_ink = '5f98cdae7d10b0459b2812dd'
-        from misc.download_from_battlefy import download_from_battlefy
-        tournament: dict = download_from_battlefy(november_2020_low_ink)
-        if len(tournament) == 1:
+    async def verify(ctx: Context, team_slug_or_confirmation: Optional[str], low_ink_id: Optional[str]):
+        if not low_ink_id:
+            low_ink_id = '5fe16a0200630111c42b2040'
+
+        from misc.download_from_battlefy_result import download_from_battlefy
+        tournament = list(download_from_battlefy(low_ink_id))
+        if isinstance(tournament, list) and len(tournament) == 1:
             tournament = tournament[0]
 
         if len(tournament) == 0:
-            await ctx.send(f"I couldn't download the latest tournament data 😔 (id: {november_2020_low_ink})")
+            await ctx.send(f"I couldn't download the latest tournament data 😔 (id: {low_ink_id})")
             return
 
         if not team_slug_or_confirmation:
@@ -158,7 +159,7 @@ if __name__ == '__main__':
                             verification_message += f'The team {name} ({team_id}) has a player with no slug!\n'
                             continue
                         else:
-                            await slapp_ctx_queue.put((ctx, datetime.now()))
+                            await slapp_ctx_queue.put(ctx)
                             await query_slapp(player_slug)
                 else:
                     continue
@@ -170,13 +171,27 @@ if __name__ == '__main__':
         name='Slapp',
         description="Query the slapp for a Splatoon player, team, tag, or other information",
         brief="Splatoon player and team lookup",
-        aliases=['slapp', 'splattag'],
-        help=f'{COMMAND_PREFIX}slapp <query>',
+        aliases=['slapp', 'splattag', 'search'],
+        help=f'{COMMAND_PREFIX}search <query>',
         pass_ctx=True)
     async def slapp(ctx: Context, *, query):
         print('slapp called with query ' + query)
-        await slapp_ctx_queue.put((ctx, datetime.now()))
+        await slapp_ctx_queue.put(ctx)
         await query_slapp(query)
+
+
+    @bot.command(
+        name='Slapp (Full description)',
+        description="Fully describe the given id.",
+        brief="Splatoon player or team full description",
+        aliases=['full', 'describe'],
+        help=f'{COMMAND_PREFIX}full <slapp_id>',
+        pass_ctx=True)
+    async def full(ctx: Context, slapp_id: str):
+        print('full called with query ' + slapp_id)
+        await slapp_ctx_queue.put(ctx)
+        await slapp_describe(slapp_id)
+
 
     @bot.event
     async def on_command_error(ctx, error):
@@ -206,10 +221,10 @@ if __name__ == '__main__':
 
         await bot.change_presence(activity=discord.Game(name=presence))
 
-    async def send_slapp(ctx: Context, now: datetime, success_message: str, response: dict):
+    async def send_slapp(ctx: Context, success_message: str, response: dict):
         if success_message == "OK":
             try:
-                builder, colour = process_slapp(response, now)
+                builder, colour = process_slapp(response)
             except Exception as e:
                 await ctx.send(content=f'Something went wrong processing the result from Slapp. Blame Slate. 😒🤔 '
                                        f'({e.__str__()})')
@@ -219,8 +234,12 @@ if __name__ == '__main__':
             try:
                 removed_fields: List[dict] = []
                 message = 1
+                # Only send 10 messages tops
                 while message <= 10:
-                    while builder.__len__() > 6000 or len(builder.fields) > 20:
+                    # While the message is more than the allowed 6000, or
+                    # The message has more than 20 fields, or
+                    # The removed fields has one only (the footer cannot be alone)
+                    while builder.__len__() > 6000 or len(builder.fields) > 20 or len(removed_fields) == 1:
                         index = len(builder.fields) - 1
                         removed: dict = builder._fields[index]
                         builder.remove_field(index)
@@ -252,8 +271,10 @@ if __name__ == '__main__':
         if slapp_ctx_queue.empty():
             print(f"receive_slapp_response but queue is empty. Discarding result: {success_message=}, {response=}")
         else:
-            ctx, now = await slapp_ctx_queue.get()
-            await send_slapp(ctx, now, success_message, response)
+            ctx = await slapp_ctx_queue.get()
+            await send_slapp(ctx=ctx,
+                             success_message=success_message,
+                             response=response)
 
 
     loop = asyncio.get_event_loop()

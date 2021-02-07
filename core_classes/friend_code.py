@@ -1,4 +1,6 @@
-from typing import List
+import hashlib
+import re
+from typing import List, Union
 
 from helpers.dict_helper import from_list
 
@@ -6,21 +8,17 @@ from helpers.dict_helper import from_list
 class FriendCode:
     fc: List[int] = []
 
-    def __init__(self, param: List[int]):
-        if not param or len(param) != 3:
-            raise ValueError('param should be length 3.')
-        self.fc = param
+    def __init__(self, param: Union[str, List[int]]):
+        if not param:
+            raise ValueError('FriendCode parameter must be specified.')
 
-    # TODO - parse FCs from string (this is implemented in C#)
-    # @staticmethod
-    # def parse_and_strip_fc(value: str) -> ('FriendCode', str):
-    #     if is_none_or_whitespace(value):
-    #         return NO_FRIEND_CODE, value
-    #
-    # @staticmethod
-    # def try_parse(value: str) -> (bool, 'FriendCode'):
-    #     (fc, _) = FriendCode.parse_and_strip_fc(value)
-    #     return fc != NO_FRIEND_CODE, fc
+        if isinstance(param, str):
+            param = [int(part) for part in re.match('^(\\d{4})-(\\d{4})-(\\d{4})$', param).group(1, 2, 3)]
+
+        if len(param) != 3:
+            raise ValueError('FriendCode should be 3 ints.')
+
+        self.fc = param
 
     def __str__(self, separator: str = '-'):
         if not self.fc:
@@ -45,6 +43,24 @@ class FriendCode:
         result: dict = {"FC": self.fc}
         return result
 
+    def is_3ds_valid_code(self) -> bool:
+        fc_int = int(f'{self.fc[0]}{self.fc[1]}{self.fc[2]}')
+        principal = fc_int & 0xffffffff
+        checksum = fc_int >> 32
+
+        sha1 = hashlib.sha1()
+        sha1.update(principal.to_bytes(4, byteorder='little'))
+        calc_sum = sha1.digest()[0] >> 1
+
+        print(self.__str__(), fc_int, principal, checksum, calc_sum)
+        return checksum == calc_sum
+
 
 NO_FRIEND_CODE_SHORTS: List[int] = [0, 0, 0]
 NO_FRIEND_CODE = FriendCode(NO_FRIEND_CODE_SHORTS)
+
+
+if __name__ == '__main__':
+    fc = FriendCode(input('Enter friend code.'))
+    print(fc)
+    print(fc.is_valid_code())

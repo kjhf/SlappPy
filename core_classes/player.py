@@ -5,11 +5,11 @@ from core_classes.battlefy import Battlefy
 from core_classes.discord import Discord
 from core_classes.friend_code import FriendCode
 from core_classes.name import Name
+from core_classes.skill import Skill
 from core_classes.socials.sendou import Sendou
 from core_classes.socials.twitch import Twitch
 from core_classes.socials.twitter import Twitter
 from helpers.dict_helper import from_list, to_list, deserialize_uuids, serialize_uuids
-from slapp_py.strings import escape_characters
 
 
 class Player:
@@ -30,6 +30,9 @@ class Player:
 
     names: List[Name]
     """Back-store for the names of this player. The first element is the current name."""
+
+    skill: Skill
+    """This player's calculated TrueSkill values"""
 
     sendou_profiles: List[Sendou]
     """Back-store for the Sendou Profiles of this player."""
@@ -63,6 +66,7 @@ class Player:
                  battlefy: Optional[Battlefy] = None,
                  discord: Optional[Discord] = None,
                  friend_codes: Optional[List[FriendCode]] = None,
+                 skill: Optional[Skill] = None,
                  sendou_profiles: Optional[List[Sendou]] = None,
                  twitch_profiles: Optional[List[Twitch]] = None,
                  twitter_profiles: Optional[List[Twitter]] = None,
@@ -107,6 +111,7 @@ class Player:
         self.battlefy = battlefy or Battlefy()
         self.discord = discord or Discord()
         self.friend_codes = friend_codes or []
+        self.skill = skill or Skill()
         self.sendou_profiles = sendou_profiles or []
         self.twitter_profiles = twitter_profiles or []
         self.twitch_profiles = twitch_profiles or []
@@ -133,11 +138,6 @@ class Player:
         return chr(ord(self.country[0]) + Player._COUNTRY_FLAG_OFFSET) + \
             chr(ord(self.country[1]) + Player._COUNTRY_FLAG_OFFSET)
 
-    @property
-    def escape_names(self) -> List[str]:
-        """Return all the names as strings after escaping back-slashes."""
-        return list(map(lambda n: escape_characters(n.value, '\\'), self.names))
-
     @staticmethod
     def from_dict(obj: dict) -> 'Player':
         assert isinstance(obj, dict)
@@ -148,6 +148,7 @@ class Player:
             friend_codes=from_list(lambda x: FriendCode.from_dict(x), obj.get("FriendCode")),
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
             sendou_profiles=from_list(lambda x: Sendou.from_dict(x), obj.get("Sendou")),
+            skill=Skill.from_dict(obj.get("Skill")) if "Skill" in obj else Skill(),
             sources=Source.deserialize_uuids(obj),
             teams=deserialize_uuids(obj, "Teams"),
             twitch_profiles=from_list(lambda x: Twitch.from_dict(x), obj.get("Twitch")),
@@ -173,6 +174,8 @@ class Player:
             result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
         if len(self.sendou_profiles) > 0:
             result["Sendou"] = to_list(lambda x: Sendou.to_dict(x), self.sendou_profiles)
+        if not self.skill.is_default:
+            result["Skill"] = self.skill.to_dict(),
         if len(self.sources) > 0:
             result["S"] = serialize_uuids(self.sources)
         if len(self.teams) > 0:

@@ -179,4 +179,4 @@ class Team:
             return 'No higher div players.'
         else:
             name: str = best_player.name.value
-            return f"Highest div player is {escape_characters(name)} at {highest_div.__str__()}."
+            return f"Highest div player is ``{name}`` at {highest_div.__str__()}."
