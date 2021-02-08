@@ -4,7 +4,7 @@ from typing import List, Dict, Union, Optional
 from helpers.str_helper import truncate
 
 
-def escape_characters(string: Union[str, dict], characters: str = '_*\\', escape_character: str = '\\') -> str:
+def escape_characters(string: Union[str, dict], characters: str = '\\', escape_character: str = '\\') -> str:
     """
     Escape characters in a string with the specified escape character(s).
     :param string: The string to escape

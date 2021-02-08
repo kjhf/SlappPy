@@ -9,7 +9,7 @@ from smashggpy.util import Initializer
 from smashggpy.util.QueryQueueDaemon import QueryQueueDaemon
 
 from tokens import SMASH_GG_API_KEY
-from misc.utils import save_to_file
+from misc.utils import save_as_json_to_file
 
 if __name__ == '__main__':
     Initializer.initialize(SMASH_GG_API_KEY, 'info')
@@ -62,14 +62,14 @@ if __name__ == '__main__':
 
             name = f'{start_time.strftime("%Y-%m-%d")}-{tourney_contents["name"]}-' \
                    f'{id_to_fetch}.json'
-            save_to_file(f'./tournaments/{name}', json.dumps(tourney_contents, default=str))
+            save_as_json_to_file(f'./tournaments/{name}', tourney_contents)
             print(f'OK! (Saved read tourney {name})')
         else:
-            save_to_file(f'{id_to_fetch}.json', json.dumps(tourney_contents, default=str))
+            save_as_json_to_file(f'{id_to_fetch}.json', tourney_contents)
             print(f'OK! (Saved generic {id_to_fetch})')
 
         # Handle teams...
         if not exists('./teams'):
             makedirs('./teams')
-        save_to_file(f'./teams/{name}', json.dumps(team_contents, default=str))
+        save_as_json_to_file(f'./teams/{name}', team_contents)
         print(f'OK! (Saved read teams {name})')

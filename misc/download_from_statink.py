@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists
-from misc.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_as_json_to_file
 
 STAT_INK_ADDRESS_FORMAT: str = 'https://stat.ink/api/v2/battle/%s?format=pretty'
 
@@ -26,8 +26,8 @@ if __name__ == '__main__':
             start_time: datetime = isoparse(contents['end_at']['iso8601'])
             name = f'{start_time.strftime("%Y-%m-%d")}-stat.ink-' \
                    f'{id_to_fetch}.json'
-            save_to_file(f'./statink/{name}', json.dumps(contents))
+            save_as_json_to_file(f'./statink/{name}', contents)
             print(f'OK! (Saved contents {name})')
         else:
-            save_to_file(f'{id_to_fetch}.json', json.dumps(contents))
+            save_as_json_to_file(f'{id_to_fetch}.json', contents)
             print(f'OK! (Saved generic {id_to_fetch})')

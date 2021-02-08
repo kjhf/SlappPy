@@ -1,6 +1,8 @@
 from typing import List, Optional, Union
 from uuid import UUID
 
+from helpers.dict_helper import serialize_uuids
+
 
 class Name:
     value: str
@@ -38,7 +40,7 @@ class Name:
     def to_dict(self) -> dict:
         result: dict = {'Value': self.value}
         if len(self.sources) > 0:
-            result["S"] = map(str, self.sources)
+            result["S"] = serialize_uuids(self.sources)
         return result
 
     def __str__(self):

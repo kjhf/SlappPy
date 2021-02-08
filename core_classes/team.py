@@ -5,13 +5,13 @@ from core_classes import division
 from core_classes.clan_tag import ClanTag
 from core_classes.division import Division
 from core_classes.name import Name
+from core_classes.socials.battlefy_team_social import BattlefyTeamSocial
 from core_classes.socials.twitter import Twitter
-from helpers.dict_helper import from_list, to_list
-from slapp_py.strings import escape_characters
+from helpers.dict_helper import from_list, to_list, serialize_uuids
 
 
 class Team:
-    battlefy_persistent_team_ids: List[Name] = []
+    battlefy_persistent_team_ids: List[BattlefyTeamSocial] = []
     """Back-store for the persistent ids of this team."""
 
     clan_tags: List[ClanTag] = []
@@ -33,7 +33,7 @@ class Team:
     """The GUID of the team."""
 
     def __init__(self,
-                 battlefy_persistent_team_ids: Optional[List[Name]] = None,
+                 battlefy_persistent_team_ids: Optional[List[BattlefyTeamSocial]] = None,
                  clan_tags: Optional[List[ClanTag]] = None,
                  divisions: Optional[List[Division]] = None,
                  names: Union[None, Name, List[Name], str, List[str]] = None,
@@ -75,6 +75,12 @@ class Team:
         self.guid = guid or uuid4()
 
     @property
+    def battlefy_persistent_id_strings(self) -> List[str]:
+        """The known Battlefy Persistent Ids of the team. Can be Empty."""
+        return [social.value for social in self.battlefy_persistent_team_ids] \
+            if len(self.battlefy_persistent_team_ids) > 0 else []
+
+    @property
     def battlefy_persistent_team_id(self) -> Optional[Name]:
         """The last known Battlefy Persistent Id of the team. Can be None."""
         return self.battlefy_persistent_team_ids[0] if len(self.battlefy_persistent_team_ids) > 0 else None
@@ -105,7 +111,8 @@ class Team:
         assert isinstance(obj, dict)
         from core_classes.source import Source
         return Team(
-            battlefy_persistent_team_ids=from_list(lambda x: Name.from_dict(x), obj.get("BattlefyPersistentTeamIds")),
+            battlefy_persistent_team_ids=from_list(lambda x: BattlefyTeamSocial.from_dict(x),
+                                                   obj.get("BattlefyPersistentTeamIds")),
             clan_tags=from_list(lambda x: ClanTag.from_dict(x), obj.get("ClanTags")),
             divisions=from_list(lambda x: Division.from_dict(x), obj.get("Divisions")),
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
@@ -117,16 +124,17 @@ class Team:
     def to_dict(self) -> dict:
         result = {}
         if len(self.battlefy_persistent_team_ids) > 0:
-            result["BattlefyPersistentTeamIds"] = self.battlefy_persistent_team_ids
+            result["BattlefyPersistentTeamIds"] = to_list(lambda x: BattlefyTeamSocial.to_dict(x),
+                                                          self.battlefy_persistent_team_ids)
         if len(self.clan_tags) > 0:
             result["ClanTags"] = to_list(lambda x: ClanTag.to_dict(x), self.clan_tags)
         if len(self.divisions) > 0:
             result["Divisions"] = to_list(lambda x: Division.to_dict(x), self.divisions)
-        result["Id"] = self.guid
+        result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
             result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
         if len(self.sources) > 0:
-            result["S"] = map(str, self.sources)
+            result["S"] = serialize_uuids(self.sources)
         if len(self.twitter_profiles) > 0:
             result["Twitter"] = to_list(lambda x: Twitter.to_dict(x), self.twitter_profiles)
         return result
@@ -170,4 +178,4 @@ class Team:
             return 'No higher div players.'
         else:
             name: str = best_player.name.value
-            return f"Highest div player is {escape_characters(name)} at {highest_div.__str__()}."
+            return f"Highest div player is ``{name}`` at {highest_div.__str__()}."
