@@ -22,7 +22,7 @@ from misc.slapp_files_utils import get_latest_snapshot_sources_file, \
     TOURNEY_INFO_SAVE_DIR
 from tokens import CLOUD_BACKEND, SLAPP_APP_DATA
 from misc import utils
-from misc.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_as_json_to_file
 from vlee import battlefyToolkit
 from vlee.slate import ORG_SLUGS
 
@@ -127,7 +127,7 @@ def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str) -> Optional[dict]:
 
         print(f'OK! (Saved read tourney info file to {full_path})')
 
-        save_to_file(full_path, json.dumps(tourney_contents))
+        save_as_json_to_file(full_path, tourney_contents)
     else:
         tourney_contents = utils.load_json_from_file(full_path)
 
@@ -162,7 +162,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str) ->
         _stage_dir = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__())
         if not exists(_stage_dir):
             makedirs(_stage_dir)
-        save_to_file(_stage_path, json.dumps(_stage_contents))
+        save_as_json_to_file(_stage_path, _stage_contents)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
         _stage_contents = utils.load_json_from_file(_stage_path)
@@ -189,7 +189,7 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
         _stage_dir = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__())
         if not exists(_stage_dir):
             makedirs(_stage_dir)
-        save_to_file(_stage_path, json.dumps(_stage_contents))
+        save_as_json_to_file(_stage_path, _stage_contents)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
         _stage_contents = utils.load_json_from_file(_stage_path)
@@ -227,7 +227,7 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str) -> Optional[List[d
         print(f'OK! (Saved read tourney to {full_path})')
 
         # else
-        save_to_file(full_path, json.dumps(teams_contents))
+        save_as_json_to_file(full_path, teams_contents)
         print(f'OK! (Saved read tourney teams file to {full_path})')
     else:
         teams_contents = utils.load_json_from_file(full_path)
@@ -514,11 +514,14 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
 
     for i, tourney_id in enumerate(tourney_ids):
         print(f'[{i+1}/{actual_count}] Working on {tourney_id=}')
-        changes_made = add_tourney_placement_to_source(tourney_id, players, sources)
+        has_changes = add_tourney_placement_to_source(tourney_id, players, sources)
+        if has_changes:
+            print(f"Finished {tourney_id=}, changes made.")
+        else:
+            print(f"Finished {tourney_id=} but no changes.")
 
-        if changes_made:
-            utils.save_to_file(path=destination_sources_path,
-                               content=json.dumps(sources, default=str, indent=2))
+    print(f"All done, saving sources to: " + destination_sources_path)
+    utils.save_as_json_to_file(destination_sources_path, sources)
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ from misc.download_from_battlefy_result import get_or_fetch_tourney_ids, get_or_
     update_sources_with_placements
 from misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR
 from misc.sources_to_skills import update_sources_with_skills
-from misc.utils import save_to_file
+from misc.utils import save_text_to_file
 from slapp_py.slapipes import initialise_slapp
 from tokens import SLAPP_APP_DATA
 
@@ -50,7 +50,7 @@ def _phase_1() -> Set[str]:
     for tourney_id in full_tourney_ids:
         get_or_fetch_tourney_teams_file(tourney_id)
 
-    utils.save_to_file("Phase 1 Ids.json", json.dumps(list(full_tourney_ids)))
+    utils.save_as_json_to_file("Phase 1 Ids.json", list(full_tourney_ids))
     return full_tourney_ids
 
 
@@ -156,9 +156,8 @@ def full_rebuild(skip_pauses: bool = False):
         sources_contents.append(twitter_str)
 
     new_sources_file_path = join(SLAPP_APP_DATA, 'sources_new.yaml')
-    save_to_file(path=new_sources_file_path,
-                 content='\n'.join(sources_contents),
-                 overwrite=True)
+    save_text_to_file(path=new_sources_file_path,
+                      content='\n'.join(sources_contents))
 
     print(f"Phase 2 done. {updated_tourney_ids=}")
     # 3. Rebuild

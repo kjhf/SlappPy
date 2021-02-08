@@ -37,7 +37,7 @@ class Battlefy:
     def from_dict(obj: dict) -> 'Battlefy':
         assert isinstance(obj, dict)
         return Battlefy(
-            slugs=from_list(lambda x: Name.from_dict(x), obj.get("slugs")),
+            slugs=from_list(lambda x: BattlefyUserSocial.from_dict(x), obj.get("Slugs")),
             usernames=from_list(lambda x: Name.from_dict(x), obj.get("Usernames")),
             persistent_ids=from_list(lambda x: Name.from_dict(x), obj.get("PersistentIds"))
         )
@@ -45,7 +45,7 @@ class Battlefy:
     def to_dict(self) -> dict:
         result = {}
         if len(self.slugs) > 0:
-            result["Slugs"] = to_list(lambda x: Name.to_dict(x), self.slugs)
+            result["Slugs"] = to_list(lambda x: BattlefyUserSocial.to_dict(x), self.slugs)
         if len(self.usernames) > 0:
             result["Usernames"] = to_list(lambda x: Name.to_dict(x), self.usernames)
         if len(self.persistent_ids) > 0:

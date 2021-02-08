@@ -8,7 +8,6 @@ from core_classes.name import Name
 from core_classes.socials.battlefy_team_social import BattlefyTeamSocial
 from core_classes.socials.twitter import Twitter
 from helpers.dict_helper import from_list, to_list, serialize_uuids
-from slapp_py.strings import escape_characters
 
 
 class Team:

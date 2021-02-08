@@ -10,7 +10,8 @@ import os
 import re
 import traceback
 from asyncio import Queue
-from typing import List, Dict, Union, Callable, Any, Awaitable, Set
+from operator import itemgetter
+from typing import List, Dict, Callable, Any, Awaitable, Set
 from uuid import UUID
 
 from discord import Color, Embed
@@ -20,9 +21,9 @@ from core_classes.bracket import Bracket
 from core_classes.player import Player
 from core_classes.skill import Skill
 from core_classes.team import Team
-from helpers.dict_helper import from_list
 from helpers.str_helper import join, truncate
 from slapp_py.footer_phrases import get_random_footer_phrase
+from slapp_py.slapp_response_object import SlappResponseObject
 from slapp_py.strings import escape_characters, attempt_link_source
 
 MAX_RESULTS = 20
@@ -128,7 +129,6 @@ async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mo
         slapp_path = slapp_path[0:slapp_path.index('SlapPy')]
     slapp_path = os.path.join(slapp_path, 'SlapPy', 'venv', 'Slapp', 'SplatTagConsole.dll')
     assert os.path.isfile(slapp_path), f'Not a file: {slapp_path}'
-    Skill.setup()
 
     print(f"Using Slapp found at {slapp_path}")
     response_function = new_response_function
@@ -174,54 +174,17 @@ async def slapp_describe(slapp_id: str):
 
 
 def process_slapp(response: dict) -> (Embed, Color):
-    matched_players: List[Player] = from_list(lambda x: Player.from_dict(x), response.get("Players"))
-    matched_players_len = len(matched_players)
-    matched_teams: List[Team] = from_list(lambda x: Team.from_dict(x), response.get("Teams"))
-    matched_teams_len = len(matched_teams)
-    known_teams: Dict[str, Team] = {}
-    placements_for_players: Dict[str, Dict[str, List[Bracket]]] = {}
-    """Dictionary keyed by Player id, of value Dictionary keyed by Source id of value Placements list"""
+    r: SlappResponseObject = SlappResponseObject(response)
 
-    for team_id in response.get("AdditionalTeams"):
-        known_teams[team_id.__str__()] = Team.from_dict(response.get("AdditionalTeams")[team_id])
-    for team in matched_teams:
-        known_teams[team.guid.__str__()] = team
-
-    matched_players_for_teams: Dict[str, List[Dict[str, Union[Player, bool]]]] = {}
-    for team_id in response.get("PlayersForTeams"):
-        matched_players_for_teams[team_id] = []
-        for tup in response.get("PlayersForTeams")[team_id]:
-            player_tuple_for_team: Dict[str, Union[Player, bool]] = \
-                {"Item1": Player.from_dict(tup["Item1"]) if "Item1" in tup else None,
-                 "Item2": "Item2" in tup}
-            matched_players_for_teams[team_id].append(player_tuple_for_team)
-
-    sources: Dict[str, str] = {}
-
-    for source_id in response.get("Sources"):
-        source_name = response.get("Sources")[source_id]
-        sources[source_id] = source_name
-
-    for player_id in response.get("PlacementsForPlayers"):
-        placements_for_players[player_id.__str__()] = {}
-        for source_id in response.get("PlacementsForPlayers")[player_id]:
-            placements_for_players[player_id][source_id] = []
-            for bracket in response.get("PlacementsForPlayers")[player_id][source_id]:
-                placements_for_players[player_id][source_id].append(Bracket.from_dict(bracket))
-
-    has_matched_players = matched_players_len != 0
-    has_matched_teams = matched_teams_len != 0
-    show_limited = matched_players_len > 9 or matched_teams_len > 9
-
-    if has_matched_players and has_matched_teams:
-        title = f"Found {matched_players_len} player{('' if (matched_players_len == 1) else 's')} " \
-                f"and {matched_teams_len} team{('' if (matched_teams_len == 1) else 's')}!"
+    if r.has_matched_players and r.has_matched_teams:
+        title = f"Found {r.matched_players_len} player{('' if (r.matched_players_len == 1) else 's')} " \
+                f"and {r.matched_teams_len} team{('' if (r.matched_teams_len == 1) else 's')}!"
         colour = Color.green()
-    elif has_matched_players and not has_matched_teams:
-        title = f"Found {matched_players_len} player{('' if (matched_players_len == 1) else 's')}!"
+    elif r.has_matched_players and not r.has_matched_teams:
+        title = f"Found {r.matched_players_len} player{('' if (r.matched_players_len == 1) else 's')}!"
         colour = Color.blue()
-    elif not has_matched_players and has_matched_teams:
-        title = f"Found {matched_teams_len} team{('' if (matched_teams_len == 1) else 's')}!"
+    elif not r.has_matched_players and r.has_matched_teams:
+        title = f"Found {r.matched_teams_len} team{('' if (r.matched_teams_len == 1) else 's')}!"
         colour = Color.gold()
     else:
         title = f"Didn't find anything 😔"
@@ -230,12 +193,12 @@ def process_slapp(response: dict) -> (Embed, Color):
     builder = to_embed('', colour=colour, title=title)
     embed_colour = colour
 
-    if has_matched_players:
+    if r.has_matched_players:
         for i in range(0, MAX_RESULTS):
-            if i >= matched_players_len:
+            if i >= r.matched_players_len:
                 break
 
-            p = matched_players[i]
+            p = r.matched_players[i]
 
             # Transform names by adding a backslash to any backslashes.
             names = list(set([escape_characters(name.value) for name in p.names if name and name.value]))
@@ -248,7 +211,7 @@ def process_slapp(response: dict) -> (Embed, Color):
                 if team_id == NoTeam.guid:
                     resolved_teams.append(NoTeam)
                 else:
-                    team = known_teams.get(team_id.__str__(), None)
+                    team = r.known_teams.get(team_id.__str__(), None)
                     if not team:
                         print(f"Team id was not specified in JSON: {team_id}")
                     else:
@@ -275,7 +238,7 @@ def process_slapp(response: dict) -> (Embed, Color):
             for discord_profile in p.discord.ids:
                 did = escape_characters(discord_profile.value)
                 discord += f'🎮 Discord ID: [{did}]' \
-                            f'(https://discord.id/), 🦑 [Sendou](https://sendou.ink/u/{did})\n'
+                           f'(https://discord.id/?prefill={did}) \n🦑 [Sendou](https://sendou.ink/u/{did})\n'
 
             twitch = ''
             for twitch_profile in p.twitch_profiles:
@@ -295,7 +258,7 @@ def process_slapp(response: dict) -> (Embed, Color):
                 if source == BuiltinSource.guid:
                     player_source_names.append("(builtin)")
                 else:
-                    name = sources.get(source.__str__(), None)
+                    name = r.sources.get(source.__str__(), None)
                     if not name:
                         print(f"Source was not specified in JSON: {source}")
                     else:
@@ -303,7 +266,7 @@ def process_slapp(response: dict) -> (Embed, Color):
             player_sources: List[str] = list(map(lambda s: attempt_link_source(s), player_source_names))
             top500 = "👑 " if p.top500 else ''
             country_flag = p.country_flag + ' ' if p.country_flag else ''
-            notable_results = get_first_placements(placements_for_players, sources, p)
+            notable_results = get_first_placements(r.placements_for_players, r.sources, p)
 
             if '`' in current_name:
                 current_name = f"```{current_name}```"
@@ -312,7 +275,7 @@ def process_slapp(response: dict) -> (Embed, Color):
             field_head = truncate(country_flag + top500 + current_name, 256) or ' '
 
             # If there's just the one matched player, move the extras to another field.
-            if matched_players_len == 1 and matched_teams_len < 15:
+            if r.matched_players_len == 1 and r.matched_teams_len < 14:
                 field_body = f'{other_names}'
                 builder.add_field(name=field_head,
                                   value=truncate(field_body, 1023, "…") or "(Nothing else to say)",
@@ -344,12 +307,19 @@ def process_slapp(response: dict) -> (Embed, Color):
                                       value=truncate(', '.join(p.weapons), 1023, "…"),
                                       inline=False)
 
+                clout_message = p.skill.message
+                if p.skill.is_default:
+                    clout_message += " (this is default.)"
+                builder.add_field(name='    Clout:',
+                                  value=clout_message,
+                                  inline=False)
+
                 if len(player_sources):
                     for source_batch in range(0, 15):
                         sources_count = len(player_sources)
                         value = ''
                         for j in range(0, min(sources_count, 6)):
-                            value += player_sources[j] + '\n'
+                            value += player_sources[j].__str__() + '\n'
 
                         builder.add_field(name='    ' + f'Sources ({(source_batch + 1)}):',
                                           value=truncate(value, 1023, "…"),
@@ -383,15 +353,16 @@ def process_slapp(response: dict) -> (Embed, Color):
 
                 builder.add_field(name=field_head, value=field_body, inline=False)
 
-    if has_matched_teams:
-        separator = ',\n' if matched_teams_len == 1 else ', '
+    if r.has_matched_teams:
+        separator = ',\n' if r.matched_teams_len == 1 else ', '
 
         for i in range(0, MAX_RESULTS):
-            if i >= matched_teams_len:
+            if i >= r.matched_teams_len:
                 break
 
-            t = matched_teams[i]
-            players = matched_players_for_teams[t.guid.__str__()]
+            t = r.matched_teams[i]
+            players = r.matched_players_for_teams[t.guid.__str__()]
+            players_in_team: List[Player] = []
             player_strings = ''
             for player_tuple in players:
                 if player_tuple:
@@ -406,9 +377,11 @@ def process_slapp(response: dict) -> (Embed, Color):
                     player_strings += \
                         f'{name} {("(Most recent)" if in_team else "(Ex)" if in_team is False else "")}'
                     player_strings += separator
+                    if in_team:
+                        players_in_team.append(p)
 
             player_strings = player_strings[0:-len(separator)]
-            div_phrase = Team.best_team_player_div_string(t, players, known_teams)
+            div_phrase = Team.best_team_player_div_string(t, players, r.known_teams)
             if div_phrase:
                 div_phrase += '\n'
             team_sources: List[UUID] = t.sources
@@ -419,7 +392,7 @@ def process_slapp(response: dict) -> (Embed, Color):
                 if source == BuiltinSource.guid:
                     team_source_names.append("(builtin)")
                 else:
-                    name = sources.get(source.__str__(), None)
+                    name = r.sources.get(source.__str__(), None)
                     if not name:
                         print(f"Source was not specified in JSON: {source}")
                     else:
@@ -427,25 +400,60 @@ def process_slapp(response: dict) -> (Embed, Color):
             team_sources: str = "\n ".join([attempt_link_source(s) for s in team_source_names])
 
             # If there's just the one matched team, move the sources to the next field.
-            if matched_teams_len == 1:
+            if r.matched_teams_len == 1:
                 info = f'{div_phrase}Players: {player_strings}'
                 builder.add_field(name=truncate(t.__str__(), 256, "") or "Unnamed Team",
                                   value=truncate(info, 1023, "…_"),
                                   inline=False)
 
+                player_skills = [player.skill for player in players_in_team]
+                (min_clout, min_conf), (max_clout, max_conf) = Skill.team_clout(player_skills)
+
+                if min_conf > 1:  # 1%
+                    if min_clout == max_clout:
+                        clout_message = f"I rate the current team's clout at {min_clout} ({min_conf}% sure)"
+                    else:
+                        clout_message = f"I rate the current team's clout between {min_clout} ({min_conf}% sure) " \
+                                        f"and {max_clout} ({max_conf}% sure)"
+
+                    builder.add_field(name='    Clout:',
+                                      value=clout_message,
+                                      inline=False)
+
+                player_skills = [(player, player.skill.clout) for player in players_in_team]
+                best_player = max(player_skills, key=itemgetter(1))[0]
+                builder.add_field(name='    Best player in the team by clout:',
+                                  value=truncate(best_player.name.value, 500, "…") + ": " + best_player.skill.message,
+                                  inline=False)
+
                 builder.add_field(name='\tSources:',
                                   value=truncate('_' + team_sources + '_', 1023, "…_"),
                                   inline=False)
+
+                builder.add_field(name='\tSlapp Id:',
+                                  value=t.guid.__str__(),
+                                  inline=False)
             else:
-                info = f'{div_phrase}Players: {player_strings}\n' \
-                       f'_{team_sources}_'
+                additional_info = "\n `~full " + t.guid.__str__() + "`\n"
+
+                field_body = f'{div_phrase}Players: {player_strings}\n' \
+                             f'_{team_sources}_' or "(Nothing else to say)"
+
+                if len(field_body) + len(additional_info) < 1024:
+                    field_body += additional_info
+                else:
+                    field_body = truncate(field_body, 1020 - len(additional_info), indicator="…")
+                    if (field_body.count('```') % 2) == 1:  # If we have an unclosed ```
+                        field_body += '```'
+                    field_body += additional_info
+
                 builder.add_field(name=truncate(t.__str__(), 256, "") or "Unnamed Team",
-                                  value=truncate(info, 1023, "…_"),
+                                  value=truncate(field_body, 1023, "…_"),
                                   inline=False)
 
     builder.set_footer(
         text=get_random_footer_phrase() + (
-            f'Only the first {MAX_RESULTS} results are shown for players and teams.' if show_limited else ''
+            f'Only the first {MAX_RESULTS} results are shown for players and teams.' if r.show_limited else ''
         ),
         icon_url="https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png")
     return builder, embed_colour

@@ -12,13 +12,15 @@ from discord import Role, Guild, Embed
 from discord.ext import commands
 from discord.ext.commands import Bot, Context, CommandNotFound
 
-from helpers.str_helper import equals_ignore_case
+from core_classes.skill import Skill
+from helpers.str_helper import equals_ignore_case, truncate
 from slapp_py.slapipes import initialise_slapp, query_slapp, process_slapp, slapp_describe
+from slapp_py.slapp_response_object import SlappResponseObject
 from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
-slapp_ctx_queue: Queue[Context] = Queue()
+slapp_ctx_queue: Queue[(Context, str)] = Queue()
 
 if __name__ == '__main__':
     intents = discord.Intents.default()
@@ -159,7 +161,7 @@ if __name__ == '__main__':
                             verification_message += f'The team {name} ({team_id}) has a player with no slug!\n'
                             continue
                         else:
-                            await slapp_ctx_queue.put(ctx)
+                            await slapp_ctx_queue.put((ctx, 'verify'))
                             await query_slapp(player_slug)
                 else:
                     continue
@@ -176,7 +178,7 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def slapp(ctx: Context, *, query):
         print('slapp called with query ' + query)
-        await slapp_ctx_queue.put(ctx)
+        await slapp_ctx_queue.put((ctx, 'slapp'))
         await query_slapp(query)
 
 
@@ -189,9 +191,24 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def full(ctx: Context, slapp_id: str):
         print('full called with query ' + slapp_id)
-        await slapp_ctx_queue.put(ctx)
+        await slapp_ctx_queue.put((ctx, 'full'))
         await slapp_describe(slapp_id)
 
+
+    @bot.command(
+        name='Fight teams',
+        description="Get a match rating and predict the winner between two teams.",
+        brief="Two Splatoon teams to fight and rate winner",
+        aliases=['fight', 'predict'],
+        help=f'{COMMAND_PREFIX}predict <slapp_id_team1> <slapp_id_team2>',
+        pass_ctx=True)
+    async def predict(ctx: Context, slapp_id_team_1: str, slapp_id_team_2: str):
+        print(f'predict called with teams {slapp_id_team_1=} {slapp_id_team_2=}')
+        await slapp_ctx_queue.put((ctx, 'predict_1'))
+        await slapp_describe(slapp_id_team_1)
+        await slapp_ctx_queue.put((ctx, 'predict_2'))
+        await slapp_describe(slapp_id_team_2)
+        # This comes back in the receive_slapp_response -> handle_predict
 
     @bot.event
     async def on_command_error(ctx, error):
@@ -267,14 +284,70 @@ if __name__ == '__main__':
         else:
             await ctx.send(content=f'Unexpected error from Slapp 🤔: {success_message}')
 
+
+    global_handle_predict_team_1: Optional[dict] = None
+
+    async def handle_predict(ctx: Context, description: str, response: dict):
+        global global_handle_predict_team_1
+        is_part_2 = description == "predict_2"
+        if not is_part_2:
+            global_handle_predict_team_1 = response
+        else:
+            team_1_response = SlappResponseObject(global_handle_predict_team_1)
+            team_2_response = SlappResponseObject(response)
+
+            if team_1_response.matched_teams_len != 1 or team_2_response.matched_teams_len != 1:
+                await ctx.send(content=f"I didn't get the right number of teams back 😔 "
+                                       f"({team_1_response.matched_teams_len=}, {team_2_response.matched_teams_len=})")
+                return
+
+            team_1 = team_1_response.matched_teams[0]
+            players_in_team_1 = team_1_response.get_players_in_team(team_1.guid)
+            team_1_skills = [player.skill for player in players_in_team_1]
+            (_, _), (max_clout_1, max_conf_1) = Skill.team_clout(team_1_skills)
+            message = Skill.make_message(max_clout_1, max_conf_1, truncate(team_1.name.value, 20, "…")) + '\n'
+
+            team_2 = team_2_response.matched_teams[0]
+            players_in_team_2 = team_2_response.get_players_in_team(team_2.guid)
+            team_2_skills = [player.skill for player in players_in_team_2]
+            (_, _), (max_clout_2, max_conf_2) = Skill.team_clout(team_2_skills)
+            message += Skill.make_message(max_clout_2, max_conf_2, truncate(team_2.name.value, 20, "…")) + '\n'
+
+            favouring_team_1, favouring_team_2 = Skill.calculate_quality_of_game(team_1_skills, team_2_skills)
+            if max_conf_1 > 2 and max_conf_2 > 2:
+                if favouring_team_1 != favouring_team_2:
+                    message += "Hmm, it'll depend on who's playing, but... "
+
+                message += (
+                    f"Looks like a slaughterhouse. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 5 else
+                    f"Wow that is a horrifyingly unbalanced game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 10 else
+                    f"Seems unfair to me. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 33 else
+                    f"I wonder if our underdogs could cause an upset. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 50 else
+                    f"Could be an okay game to learn from. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 60 else
+                    f"Could be a fun game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 67 else
+                    f"Looks good. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 80 else
+                    f"I'd be interested to see this game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 90 else
+                    f"I've no idea which way this would go! ({favouring_team_1}% chance of fair game)"
+                    )
+            await ctx.send(message)
+
+
     async def receive_slapp_response(success_message: str, response: dict):
         if slapp_ctx_queue.empty():
             print(f"receive_slapp_response but queue is empty. Discarding result: {success_message=}, {response=}")
         else:
-            ctx = await slapp_ctx_queue.get()
-            await send_slapp(ctx=ctx,
-                             success_message=success_message,
-                             response=response)
+            ctx, description = await slapp_ctx_queue.get()
+            if description.startswith('predict_'):
+                if success_message != "OK":
+                    await send_slapp(ctx=ctx,
+                                     success_message=success_message,
+                                     response=response)
+                else:
+                    await handle_predict(ctx, description, response)
+            else:
+                await send_slapp(ctx=ctx,
+                                 success_message=success_message,
+                                 response=response)
 
 
     loop = asyncio.get_event_loop()

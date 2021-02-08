@@ -1,5 +1,5 @@
 import json
-from typing import Union, List, AnyStr
+from typing import Union, List, AnyStr, Iterable
 
 import requests
 
@@ -15,8 +15,18 @@ def fetch_address(address) -> dict:
     return json.loads(response.content)
 
 
-def save_to_file(path: str, content: Union[str, List[AnyStr]], overwrite: bool = True):
-    """Save content to specified path"""
+# Using List for the content type as json doesn't like dumping other collections.
+def save_as_json_to_file(path: str,
+                         content: Union[dict, str, List[AnyStr], List[dict]],
+                         overwrite: bool = True,
+                         indent: int = 2):
+    """Save content by dumping as json and saving to specified path"""
+    with open(file=path, mode='w' if overwrite else 'a', encoding='utf8') as json_file:
+        json.dump(content, json_file, ensure_ascii=False, default=str, indent=indent)
+
+
+def save_text_to_file(path: str, content: Union[AnyStr, Iterable[AnyStr]], overwrite: bool = True):
+    """Save content as text to specified path"""
     with open(file=path,
               mode='w' if overwrite else 'a',
               encoding='utf-8') as the_file:

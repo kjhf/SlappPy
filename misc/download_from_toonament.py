@@ -4,7 +4,7 @@ from typing import List
 import requests
 from bs4 import BeautifulSoup
 
-from misc.utils import fetch_address, save_to_file
+from misc.utils import fetch_address, save_as_json_to_file
 
 TOONAMENT_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s'
 TEAMS_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s/participants/'
@@ -49,4 +49,4 @@ if __name__ == '__main__':
 
     # Now get the players for the teams
     response = fetch_address(TEAMS_ADDRESS_FORMAT % id_to_fetch)
-    save_to_file(f'{id_to_fetch}.json', json.dumps(found_teams))
+    save_as_json_to_file(f'{id_to_fetch}.json', found_teams)

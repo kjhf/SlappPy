@@ -155,7 +155,7 @@ class Player:
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),
             weapons=from_list(lambda x: str(x), obj.get("Weapons")),
             country=obj.get("Country", None),
-            top500=obj.get("top500", False),
+            top500=obj.get("Top500", False),
             guid=UUID(obj.get("Id"))
         )
 
