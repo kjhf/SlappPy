@@ -3,6 +3,7 @@ from uuid import UUID
 
 from core_classes.bracket import Bracket
 from core_classes.player import Player
+from core_classes.skill import Skill
 from core_classes.team import Team
 from helpers.dict_helper import from_list
 
@@ -48,6 +49,7 @@ class SlappResponseObject:
         self.placements_for_players = placements_for_players
         self.matched_players_for_teams = matched_players_for_teams
         self.sources = sources
+        self.query = response.get("Query", "<UNKNOWN_QUERY_PLEASE_DEBUG>")
 
     @property
     def matched_players_len(self):
@@ -69,7 +71,15 @@ class SlappResponseObject:
     def show_limited(self):
         return self.matched_players_len > 9 or self.matched_teams_len > 9
 
-    def get_players_in_team(self, team_guid: Union[UUID, str]) -> List[Player]:
-        """Return Player objects for the specified team id, only including players that are in the team."""
+    def get_players_in_team(self, team_guid: Union[UUID, str], include_ex_players: bool = True) -> List[Player]:
+        """Return Player objects for the specified team id, optionally excluding players no longer in the team."""
         return [player_dict["Item1"] for player_dict in self.matched_players_for_teams[team_guid.__str__()]
-                if player_dict and player_dict["Item2"]]
+                if player_dict and (player_dict["Item2"] or include_ex_players)]
+
+    def get_team_skills(self, team_guid: Union[UUID, str], include_ex_players: bool = True) -> Dict[Player, Skill]:
+        """
+        Return Player objects with their skills for the specified team id,
+        optionally excluding players no longer in the team.
+        """
+        players = self.get_players_in_team(team_guid, include_ex_players)
+        return {player: player.skill for player in players}

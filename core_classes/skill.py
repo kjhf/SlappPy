@@ -33,7 +33,11 @@ class Skill:
 
     @property
     def clout(self) -> int:
-        """Return a public-facing estimation of the skill rating"""
+        """
+        Return a public-facing estimation of the skill rating.
+        This is the (conservative) min-rating clout
+        or 2 sigmas below current actual
+        """
         return int(expose(self.rating) * SCALAR)
 
     @property
@@ -44,14 +48,15 @@ class Skill:
     @property
     def message(self) -> str:
         """Return a public-facing message describing the clout and confidence"""
-        return Skill.make_message(self.clout, self.confidence)
+        return Skill.make_message_clout(self.clout, self.confidence)
 
     def set_to_default(self):
         """Reset the player's rating to default."""
         self.rating = Rating()
 
     @staticmethod
-    def make_message(clout: int, clout_confidence: int, name: Optional[str] = None):
+    def make_message_clout(clout: int, clout_confidence: int, name: Optional[str] = None):
+        """Get a message indicating the clout represented by the clout and confidence."""
         subject_name = name + " is" if name else 'They are'
         object_name = name if name else 'them'
 
@@ -66,6 +71,21 @@ class Skill:
             f"{subject_name} about {clout} clout, fairly sure. ({clout_confidence})% confidence)" if clout_confidence < 80 else
             f"I'd rate {object_name} at {clout} clout. ({clout_confidence}% confidence)" if clout_confidence < 90 else
             f"{subject_name} {clout} clout. ({clout_confidence}%  confidence)"
+        )
+
+    @staticmethod
+    def make_message_fairness(chance: int):
+        """Get a message indicating the fairness represented by the chance parameter."""
+        return (
+            f"Looks like a slaughterhouse. ({chance}% chance of fair game)" if chance < 5 else
+            f"Wow that is a horrifyingly unbalanced game. ({chance}% chance of fair game)" if chance < 10 else
+            f"Seems unfair to me. ({chance}% chance of fair game)" if chance < 33 else
+            f"I wonder if our underdogs could cause an upset. ({chance}% chance of fair game)" if chance < 50 else
+            f"Could be an okay game to learn from. ({chance}% chance of fair game)" if chance < 60 else
+            f"Could be a fun game. ({chance}% chance of fair game)" if chance < 67 else
+            f"Looks good. ({chance}% chance of fair game)" if chance < 80 else
+            f"I'd be interested to see this game. ({chance}% chance of fair game)" if chance < 90 else
+            f"I've no idea which way this would go! ({chance}% chance of fair game)"
         )
 
     @staticmethod
@@ -85,19 +105,35 @@ class Skill:
         max_group = Skill._get_maximum_clout_team_skills(team_skills)
 
         minimum_list = [skill.clout for skill in min_group]
-        minimum = sum(minimum_list) / len(minimum_list)
-        minimum_list = [skill.confidence for skill in min_group]
-        minimum_confidence = sum(minimum_list) / len(minimum_list)
+        if len(minimum_list):
+            minimum = sum(minimum_list) / len(minimum_list)
+            minimum_list = [skill.confidence for skill in min_group]
+            minimum_confidence = sum(minimum_list) / len(minimum_list)
+        else:
+            minimum = 0
+            minimum_confidence = 0
 
         maximum_list = [skill.clout for skill in max_group]
-        maximum = sum(maximum_list) / len(maximum_list)
-        maximum_list = [skill.confidence for skill in max_group]
-        maximum_confidence = sum(maximum_list) / len(maximum_list)
+        if len(maximum_list):
+            maximum = sum(maximum_list) / len(maximum_list)
+            maximum_list = [skill.confidence for skill in max_group]
+            maximum_confidence = sum(maximum_list) / len(maximum_list)
+        else:
+            maximum = 0
+            maximum_confidence = 0
 
         return (int(minimum), int(minimum_confidence)), (int(maximum), int(maximum_confidence))
 
     @staticmethod
-    def calculate_quality_of_game(team1: Iterable['Skill'], team2: Iterable['Skill']) -> (int, int):
+    def calculate_quality_of_game_players(player1: 'Skill', player2: 'Skill') -> int:
+        """
+        Calculate the quality of the game, which is the likelihood of the game being a draw (evenly balanced).
+        Returns a percentage.
+        """
+        return int(trueskill.quality_1vs1(player1.rating, player2.rating) * 100)
+
+    @staticmethod
+    def calculate_quality_of_game_teams(team1: Iterable['Skill'], team2: Iterable['Skill']) -> (int, int):
         """
         Calculate the quality of the game, which is the likelihood of the game being a draw (evenly balanced).
 

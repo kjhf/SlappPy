@@ -3,8 +3,9 @@ import os
 import re
 import sys
 import traceback
-from asyncio import Queue
-from typing import Optional, Union, List
+from collections import deque, namedtuple
+from operator import itemgetter
+from typing import Optional, Union, List, Tuple, Deque, Dict
 
 import discord
 import requests
@@ -20,7 +21,8 @@ from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
 
 COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
-slapp_ctx_queue: Queue[(Context, str)] = Queue()
+SlappQueueItem = namedtuple('SlappQueueItem', ('Context', 'str'))
+slapp_ctx_queue: Deque[SlappQueueItem] = deque()
 
 if __name__ == '__main__':
     intents = discord.Intents.default()
@@ -112,6 +114,65 @@ if __name__ == '__main__':
         else:
             await ctx.send("Hmm... we're not in a server! 😅")
 
+
+    @bot.command(
+        name='autoseed',
+        description="Auto seed the teams that have signed up to the tourney",
+        help=f'{COMMAND_PREFIX}autoseed <tourney_id>',
+        pass_ctx=True)
+    async def autoseed(ctx: Context, tourney_id: Optional[str]):
+        if not tourney_id:
+            tourney_id = '6019b6d0ce01411daff6bca6'
+
+        from misc.download_from_battlefy_result import download_from_battlefy
+        tournament = list(download_from_battlefy(tourney_id))
+        if isinstance(tournament, list) and len(tournament) == 1:
+            tournament = tournament[0]
+
+        if len(tournament) == 0:
+            await ctx.send(f"I couldn't download the latest tournament data 😔 (id: {tourney_id})")
+            return
+
+        if not any(team.get('players', None) for team in tournament):
+            await ctx.send(f"There are no teams in this tournament 😔 (id: {tourney_id})")
+            return
+
+        verification_message = ''
+        slapp_ctx_queue.append(SlappQueueItem(None, 'autoseed_start'))
+
+        for team in tournament:
+            name = team.get('name', None)
+            team_id = team.get('persistentTeamID', None)
+
+            if not name or not team_id:
+                continue
+
+            players = team.get('players', None)
+            if not players:
+                verification_message += f'The team {name} ({team_id}) has no players!\n'
+                continue
+
+            ignored_players = [truncate(player.get("inGameName", "(unknown player)"), 20, '…')
+                               for player in players if not player.get('persistentPlayerID')]
+
+            players = [player for player in players if player.get('persistentPlayerID')]
+            if len(players) < 4:
+                verification_message += f"Ignoring the player(s) from team {name} ({team_id}) as they don't have a persistent id: [{', '.join(ignored_players)}]\n"
+                verification_message += f"The team {name} ({team_id}) only has {len(players)} players, not calculating.\n"
+                continue
+
+            for player in players:
+                player_slug = player['persistentPlayerID']  # We've already verified this field is good
+                slapp_ctx_queue.append(SlappQueueItem(None, 'autoseed:' + name))
+                await query_slapp(player_slug)
+
+        # Finish off the autoseed list
+        slapp_ctx_queue.append(SlappQueueItem(ctx, 'autoseed_end'))
+
+        if verification_message:
+            await ctx.send(verification_message)
+
+
     @bot.command(
         name='verify',
         description="Verify a signed-up team.",
@@ -119,7 +180,7 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def verify(ctx: Context, team_slug_or_confirmation: Optional[str], low_ink_id: Optional[str]):
         if not low_ink_id:
-            low_ink_id = '5fe16a0200630111c42b2040'
+            low_ink_id = '6019b6d0ce01411daff6bca6'
 
         from misc.download_from_battlefy_result import download_from_battlefy
         tournament = list(download_from_battlefy(low_ink_id))
@@ -161,7 +222,7 @@ if __name__ == '__main__':
                             verification_message += f'The team {name} ({team_id}) has a player with no slug!\n'
                             continue
                         else:
-                            await slapp_ctx_queue.put((ctx, 'verify'))
+                            slapp_ctx_queue.append(SlappQueueItem(ctx, 'verify'))
                             await query_slapp(player_slug)
                 else:
                     continue
@@ -178,7 +239,7 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def slapp(ctx: Context, *, query):
         print('slapp called with query ' + query)
-        await slapp_ctx_queue.put((ctx, 'slapp'))
+        slapp_ctx_queue.append(SlappQueueItem(ctx, 'slapp'))
         await query_slapp(query)
 
 
@@ -191,22 +252,22 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def full(ctx: Context, slapp_id: str):
         print('full called with query ' + slapp_id)
-        await slapp_ctx_queue.put((ctx, 'full'))
+        slapp_ctx_queue.append(SlappQueueItem(ctx, 'full'))
         await slapp_describe(slapp_id)
 
 
     @bot.command(
-        name='Fight teams',
-        description="Get a match rating and predict the winner between two teams.",
-        brief="Two Splatoon teams to fight and rate winner",
+        name='Fight teams/players',
+        description="Get a match rating and predict the winner between two teams or two players.",
+        brief="Two Splatoon teams/players to fight and rate winner",
         aliases=['fight', 'predict'],
-        help=f'{COMMAND_PREFIX}predict <slapp_id_team1> <slapp_id_team2>',
+        help=f'{COMMAND_PREFIX}predict <slapp_id_1> <slapp_id_2>',
         pass_ctx=True)
     async def predict(ctx: Context, slapp_id_team_1: str, slapp_id_team_2: str):
         print(f'predict called with teams {slapp_id_team_1=} {slapp_id_team_2=}')
-        await slapp_ctx_queue.put((ctx, 'predict_1'))
+        slapp_ctx_queue.append(SlappQueueItem(ctx, 'predict_1'))
         await slapp_describe(slapp_id_team_1)
-        await slapp_ctx_queue.put((ctx, 'predict_2'))
+        slapp_ctx_queue.append(SlappQueueItem(ctx, 'predict_2'))
         await slapp_describe(slapp_id_team_2)
         # This comes back in the receive_slapp_response -> handle_predict
 
@@ -262,7 +323,8 @@ if __name__ == '__main__':
                         builder.remove_field(index)
                         removed_fields.append(removed)
 
-                    await ctx.send(embed=builder)
+                    if builder:
+                        await ctx.send(embed=builder)
 
                     if len(removed_fields):
                         message += 1
@@ -285,6 +347,68 @@ if __name__ == '__main__':
             await ctx.send(content=f'Unexpected error from Slapp 🤔: {success_message}')
 
 
+    global_handle_autoseed_list: Optional[Dict[str, List[dict]]] = dict()
+
+    async def handle_autoseed(ctx: Optional[Context], description: str, response: Optional[dict]):
+        global global_handle_autoseed_list
+
+        if description.startswith("autoseed_start"):
+            global_handle_autoseed_list.clear()
+        elif not description.startswith("autoseed_end"):
+            team_name = description.rpartition(':')[2]  # take the right side of the colon
+            if global_handle_autoseed_list.get(team_name):
+                global_handle_autoseed_list[team_name].append(response)
+            else:
+                global_handle_autoseed_list[team_name] = [response]
+        else:
+            # End, do the thing
+            message = ''
+
+            # Team name, list of players, clout, confidence
+            teams_by_clout: List[Tuple[str, List[str], int, int]] = []
+
+            if global_handle_autoseed_list:
+                for team_name in global_handle_autoseed_list:
+                    team_players = []
+                    for player_response in global_handle_autoseed_list[team_name]:
+                        r = SlappResponseObject(player_response)
+
+                        if r.matched_players_len == 0:
+                            message += f"I didn't find a match for player {r.query} 😔\n"
+                        elif r.matched_players_len > 1:
+                            message += f"Too many matches for player {r.query} 😔 " \
+                                       f"({r.matched_players_len=})\n"
+                        else:
+                            team_players.append(r.matched_players[0])
+
+                    player_skills = [player.skill for player in team_players]
+                    player_skills.sort(reverse=True)
+                    (_, _), (max_clout, max_confidence) = Skill.team_clout(player_skills)
+                    teams_by_clout.append(
+                        (team_name, [truncate(player.name.value, 20, '…') for player in team_players], max_clout, max_confidence)
+                    )
+                teams_by_clout.sort(key=itemgetter(2), reverse=True)
+            else:
+                message = "Err... I didn't get any teams back from Slapp."
+
+            if message:
+                await ctx.send(message)
+
+            message = ''
+            lines: List[str] = ["Here's how I'd order them best-to-worst, with players ordered too, and assuming each team puts its best players on:\n```"]
+            for line in [f"{truncate(tup[0], 50, '…')} (Clout: {tup[2]} with {tup[3]}% confidence) [{', '.join(tup[1])}]" for tup in teams_by_clout]:
+                lines.append(line)
+
+            for line in lines:
+                if len(message) + len(line) > 1996:
+                    await ctx.send(message + "\n```")
+                    message = '```\n'
+
+                message += line + '\n'
+
+            if message:
+                await ctx.send(message + "\n```")
+
     global_handle_predict_team_1: Optional[dict] = None
 
     async def handle_predict(ctx: Context, description: str, response: dict):
@@ -293,50 +417,55 @@ if __name__ == '__main__':
         if not is_part_2:
             global_handle_predict_team_1 = response
         else:
-            team_1_response = SlappResponseObject(global_handle_predict_team_1)
-            team_2_response = SlappResponseObject(response)
+            response_1 = SlappResponseObject(global_handle_predict_team_1)
+            response_2 = SlappResponseObject(response)
 
-            if team_1_response.matched_teams_len != 1 or team_2_response.matched_teams_len != 1:
-                await ctx.send(content=f"I didn't get the right number of teams back 😔 "
-                                       f"({team_1_response.matched_teams_len=}, {team_2_response.matched_teams_len=})")
+            if response_1.matched_players_len == 1 and response_2.matched_players_len == 1:
+                matching_mode = 'players'
+            elif response_1.matched_teams_len == 1 and response_2.matched_teams_len == 1:
+                matching_mode = 'teams'
+            else:
+                await ctx.send(content=f"I didn't get the right number of players/teams back 😔 "
+                                       f"({response_1.matched_players_len=}/{response_1.matched_teams_len=}, "
+                                       f"{response_2.matched_players_len=}/{response_2.matched_teams_len=})")
                 return
 
-            team_1 = team_1_response.matched_teams[0]
-            players_in_team_1 = team_1_response.get_players_in_team(team_1.guid)
-            team_1_skills = [player.skill for player in players_in_team_1]
-            (_, _), (max_clout_1, max_conf_1) = Skill.team_clout(team_1_skills)
-            message = Skill.make_message(max_clout_1, max_conf_1, truncate(team_1.name.value, 20, "…")) + '\n'
+            message = ''
+            if matching_mode == 'teams':
+                team_1 = response_1.matched_teams[0]
+                team_1_skills = response_1.get_team_skills(team_1.guid).values()
+                (_, _), (max_clout_1, max_conf_1) = Skill.team_clout(team_1_skills)
+                message += Skill.make_message_clout(max_clout_1, max_conf_1, truncate(team_1.name.value, 20, "…")) + '\n'
 
-            team_2 = team_2_response.matched_teams[0]
-            players_in_team_2 = team_2_response.get_players_in_team(team_2.guid)
-            team_2_skills = [player.skill for player in players_in_team_2]
-            (_, _), (max_clout_2, max_conf_2) = Skill.team_clout(team_2_skills)
-            message += Skill.make_message(max_clout_2, max_conf_2, truncate(team_2.name.value, 20, "…")) + '\n'
+                team_2 = response_2.matched_teams[0]
+                team_2_skills = response_1.get_team_skills(team_2.guid).values()
+                (_, _), (max_clout_2, max_conf_2) = Skill.team_clout(team_2_skills)
+                message += Skill.make_message_clout(max_clout_2, max_conf_2, truncate(team_2.name.value, 20, "…")) + '\n'
 
-            favouring_team_1, favouring_team_2 = Skill.calculate_quality_of_game(team_1_skills, team_2_skills)
-            if max_conf_1 > 2 and max_conf_2 > 2:
-                if favouring_team_1 != favouring_team_2:
-                    message += "Hmm, it'll depend on who's playing, but... "
+                favouring_team_1, favouring_team_2 = Skill.calculate_quality_of_game_teams(team_1_skills, team_2_skills)
+                if max_conf_1 > 2 and max_conf_2 > 2:
+                    if favouring_team_1 != favouring_team_2:
+                        message += "Hmm, it'll depend on who's playing, but... "
 
-                message += (
-                    f"Looks like a slaughterhouse. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 5 else
-                    f"Wow that is a horrifyingly unbalanced game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 10 else
-                    f"Seems unfair to me. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 33 else
-                    f"I wonder if our underdogs could cause an upset. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 50 else
-                    f"Could be an okay game to learn from. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 60 else
-                    f"Could be a fun game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 67 else
-                    f"Looks good. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 80 else
-                    f"I'd be interested to see this game. ({favouring_team_1}% chance of fair game)" if favouring_team_1 < 90 else
-                    f"I've no idea which way this would go! ({favouring_team_1}% chance of fair game)"
-                    )
+                    message += Skill.make_message_fairness(favouring_team_1)
+            elif matching_mode == 'players':
+                p1 = response_1.matched_players[0]
+                message += Skill.make_message_clout(p1.skill.clout, p1.skill.confidence, truncate(p1.name.value, 20, "…")) + '\n'
+                p2 = response_2.matched_players[0]
+                message += Skill.make_message_clout(p2.skill.clout, p2.skill.confidence, truncate(p2.name.value, 20, "…")) + '\n'
+                quality = Skill.calculate_quality_of_game_players(p1.skill, p2.skill)
+                message += Skill.make_message_fairness(quality)
+            else:
+                message += f"WTF IS {matching_mode}?!"
+
             await ctx.send(message)
 
 
     async def receive_slapp_response(success_message: str, response: dict):
-        if slapp_ctx_queue.empty():
+        if len(slapp_ctx_queue) == 0:
             print(f"receive_slapp_response but queue is empty. Discarding result: {success_message=}, {response=}")
         else:
-            ctx, description = await slapp_ctx_queue.get()
+            ctx, description = slapp_ctx_queue.popleft()
             if description.startswith('predict_'):
                 if success_message != "OK":
                     await send_slapp(ctx=ctx,
@@ -344,6 +473,25 @@ if __name__ == '__main__':
                                      response=response)
                 else:
                     await handle_predict(ctx, description, response)
+            elif description.startswith('autoseed'):
+                if success_message != "OK":
+                    await send_slapp(ctx=ctx,
+                                     success_message=success_message,
+                                     response=response)
+
+                # If the start, send on and read again.
+                if description.startswith("autoseed_start"):
+                    await handle_autoseed(None, description, None)
+                    ctx, description = slapp_ctx_queue.popleft()
+
+                await handle_autoseed(ctx, description, response)
+
+                # Check if last.
+                ctx, description = slapp_ctx_queue[0]
+                if description.startswith("autoseed_end"):
+                    await handle_autoseed(ctx, description, None)
+                    slapp_ctx_queue.popleft()
+
             else:
                 await send_slapp(ctx=ctx,
                                  success_message=success_message,
