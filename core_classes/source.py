@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Union, List, Optional
 from uuid import UUID, uuid4
 
@@ -9,6 +10,9 @@ from helpers.dict_helper import to_list, from_list
 UNKNOWN_SOURCE = "(Unnamed Source)"
 """Displayed string for an unknown source."""
 
+UNKNOWN_DATE_TIME = datetime.utcfromtimestamp(0)
+"""The unknown datetime (epoch)"""
+
 
 class Source:
     def __init__(self,
@@ -17,6 +21,7 @@ class Source:
                  players: Optional[List[Player]] = None,
                  teams: Optional[List[Team]] = None,
                  uris: Optional[List[str]] = None,
+                 start: Optional[datetime] = None,
                  guid: Union[None, str, UUID] = None
                  ):
         self.brackets: List[Bracket] = brackets or []
@@ -24,6 +29,7 @@ class Source:
         self.players: List[Player] = players or []
         self.teams: List[Team] = teams or []
         self.uris: List[str] = uris or []
+        self.start: datetime = start or UNKNOWN_DATE_TIME
 
         if isinstance(guid, str):
             guid = UUID(guid)
@@ -59,7 +65,8 @@ class Source:
             brackets=from_list(lambda x: Bracket.from_dict(x), obj.get("Brackets")),
             players=from_list(lambda x: Player.from_dict(x), obj.get("Players")),
             teams=from_list(lambda x: Team.from_dict(x), obj.get("Teams")),
-            uris=from_list(lambda x: str(x), obj.get("Uris"))
+            uris=from_list(lambda x: str(x), obj.get("Uris")),
+            start=datetime.fromtimestamp(obj["Start"]) if "Start" in obj else UNKNOWN_DATE_TIME,
         )
 
     def to_dict(self) -> dict:
@@ -72,4 +79,6 @@ class Source:
             result["Teams"] = to_list(lambda x: Team.to_dict(x), self.teams)
         if len(self.uris) > 0:
             result["Uris"] = self.uris
+        if self.start != UNKNOWN_DATE_TIME:
+            result["Start"] = self.start.timestamp()
         return result

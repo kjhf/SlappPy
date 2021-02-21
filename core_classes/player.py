@@ -82,10 +82,7 @@ class Player:
             if not isinstance(sources, list):
                 sources = [sources]
 
-            self.sources = []
-            for i in range(0, len(sources)):
-                assert isinstance(sources[i], UUID)
-                self.sources.append(sources[i])
+            self.sources = [(source if isinstance(source, UUID) else UUID(source.__str__())) for source in sources]
 
         if not isinstance(names, list):
             names = [names]
@@ -93,7 +90,7 @@ class Player:
         self.names = []
         for i in range(0, len(names)):
             if isinstance(names[i], str):
-                self.names.append(Name(names[i], sources[0]))
+                self.names.append(Name(names[i], sources[0] if sources else None))
             elif isinstance(names[i], Name):
                 self.names.append(names[i])
 

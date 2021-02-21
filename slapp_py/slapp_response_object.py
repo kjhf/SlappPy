@@ -6,6 +6,7 @@ from core_classes.player import Player
 from core_classes.skill import Skill
 from core_classes.team import Team
 from helpers.dict_helper import from_list
+from slapp_py.strings import attempt_link_source
 
 
 class SlappResponseObject:
@@ -49,6 +50,7 @@ class SlappResponseObject:
         self.placements_for_players = placements_for_players
         self.matched_players_for_teams = matched_players_for_teams
         self.sources = sources
+        """Sources keyed by id, values are its name"""
         self.query = response.get("Query", "<UNKNOWN_QUERY_PLEASE_DEBUG>")
 
     @property
@@ -73,8 +75,9 @@ class SlappResponseObject:
 
     def get_players_in_team(self, team_guid: Union[UUID, str], include_ex_players: bool = True) -> List[Player]:
         """Return Player objects for the specified team id, optionally excluding players no longer in the team."""
-        return [player_dict["Item1"] for player_dict in self.matched_players_for_teams[team_guid.__str__()]
-                if player_dict and (player_dict["Item2"] or include_ex_players)]
+
+        return [player_dict["Item1"] for player_dict in self.matched_players_for_teams.get(team_guid.__str__(), [])
+                if player_dict and player_dict.get("Item1") and (player_dict["Item2"] or include_ex_players)]
 
     def get_team_skills(self, team_guid: Union[UUID, str], include_ex_players: bool = True) -> Dict[Player, Skill]:
         """
@@ -83,3 +86,17 @@ class SlappResponseObject:
         """
         players = self.get_players_in_team(team_guid, include_ex_players)
         return {player: player.skill for player in players}
+
+    def get_first_placements(self, p: Player) -> List[str]:
+        result = []
+        if p.guid.__str__() in self.placements_for_players:
+            sources = self.placements_for_players[p.guid.__str__()]
+            for source_id in sources:
+                brackets = self.placements_for_players[p.guid.__str__()][source_id]
+                for bracket in brackets:
+                    if 1 in bracket.placements.players_by_placement:
+                        first_place_ids = [player_id.__str__() for player_id in bracket.placements.players_by_placement[1]]
+                        if p.guid.__str__() in first_place_ids:
+                            result.append(bracket.name + ' in ' + attempt_link_source(self.sources[source_id]))
+
+        return result

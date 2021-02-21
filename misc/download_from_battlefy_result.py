@@ -68,7 +68,8 @@ TOURNAMENT_INFO_MINIMAL_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournament
 TEAMS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s/teams'
 
 
-def download_from_battlefy(ids: Union[str, List[str]]) -> Generator[List[dict], None, None]:
+# TODO - implement force download
+def download_from_battlefy(ids: Union[str, List[str]], force: bool = False) -> Generator[List[dict], None, None]:
     if isinstance(ids, str):
         if ids.startswith('['):
             ids = json.loads(ids)

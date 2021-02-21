@@ -16,6 +16,8 @@ from uuid import UUID
 
 from discord import Color, Embed
 
+from PyBot.constants import emojis
+from PyBot.constants.emojis import CROWN, TROPHY
 from PyBot.helpers.embed_helper import to_embed
 from core_classes.bracket import Bracket
 from core_classes.player import Player
@@ -231,23 +233,23 @@ def process_slapp(response: dict) -> (Embed, Color):
 
             battlefy = ''
             for battlefy_profile in p.battlefy.slugs:
-                battlefy += f'⚔ Battlefy (Slug): [{escape_characters(battlefy_profile.value)}]' \
+                battlefy += f'{emojis.BATTLEFY} [{escape_characters(battlefy_profile.value)}]' \
                             f'({battlefy_profile.uri})\n'
 
             discord = ''
             for discord_profile in p.discord.ids:
                 did = escape_characters(discord_profile.value)
-                discord += f'🎮 Discord ID: [{did}]' \
+                discord += f'{emojis.DISCORD} [{did}]' \
                            f'(https://discord.id/?prefill={did}) \n🦑 [Sendou](https://sendou.ink/u/{did})\n'
 
             twitch = ''
             for twitch_profile in p.twitch_profiles:
-                twitch += f'📽 Twitch: [{escape_characters(twitch_profile.value)}]' \
+                twitch += f'{emojis.TWITCH} [{escape_characters(twitch_profile.value)}]' \
                             f'({twitch_profile.uri})\n'
 
             twitter = ''
             for twitter_profile in p.twitter_profiles:
-                twitter += f'🐦 Twitter: [{escape_characters(twitter_profile.value)}]' \
+                twitter += f'{emojis.TWITTER} [{escape_characters(twitter_profile.value)}]' \
                             f'({twitter_profile.uri})\n'
 
             player_sources: List[UUID] = p.sources
@@ -264,9 +266,9 @@ def process_slapp(response: dict) -> (Embed, Color):
                     else:
                         player_source_names.append(name)
             player_sources: List[str] = list(map(lambda s: attempt_link_source(s), player_source_names))
-            top500 = "👑 " if p.top500 else ''
+            top500 = (CROWN + " ") if p.top500 else ''
             country_flag = p.country_flag + ' ' if p.country_flag else ''
-            notable_results = get_first_placements(r.placements_for_players, r.sources, p)
+            notable_results = r.get_first_placements(p)
 
             if '`' in current_name:
                 current_name = f"```{current_name}```"
@@ -296,7 +298,7 @@ def process_slapp(response: dict) -> (Embed, Color):
                 if len(notable_results):
                     notable_results_str = ''
                     for win in notable_results:
-                        notable_results_str += '🏆 Won ' + win + '\n'
+                        notable_results_str += TROPHY + ' Won ' + win + '\n'
 
                     builder.add_field(name='    Notable Wins:',
                                       value=truncate(notable_results_str, 1023, "…"),
@@ -333,7 +335,7 @@ def process_slapp(response: dict) -> (Embed, Color):
                 if len(notable_results):
                     notable_results_str = ''
                     for win in notable_results:
-                        notable_results_str += '🏆 Won ' + win + '\n'
+                        notable_results_str += TROPHY + ' Won ' + win + '\n'
                 else:
                     notable_results_str = ''
 
@@ -457,20 +459,3 @@ def process_slapp(response: dict) -> (Embed, Color):
         ),
         icon_url="https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png")
     return builder, embed_colour
-
-
-def get_first_placements(placements_for_players: Dict[str, Dict[str, List[Bracket]]],
-                         source_ids_to_name: Dict[str, str],
-                         p: Player) -> List[str]:
-    result = []
-    if p.guid.__str__() in placements_for_players:
-        sources = placements_for_players[p.guid.__str__()]
-        for source_id in sources:
-            brackets = placements_for_players[p.guid.__str__()][source_id]
-            for bracket in brackets:
-                if 1 in bracket.placements.players_by_placement:
-                    first_place_ids = [player_id.__str__() for player_id in bracket.placements.players_by_placement[1]]
-                    if p.guid.__str__() in first_place_ids:
-                        result.append(bracket.name + ' in ' + attempt_link_source(source_ids_to_name[source_id]))
-
-    return result

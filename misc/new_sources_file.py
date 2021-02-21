@@ -114,7 +114,7 @@ def full_rebuild(skip_pauses: bool = False):
     # Now update the yaml
     # Take care of those pesky exceptions to the rule
 
-    # Sendou goes first
+    # Sendou goes first (but only if not dated)
     if 'Sendou.json' in sources_contents[0]:
         sendou_str = sources_contents[0]
         sources_contents.remove(sources_contents[0])
@@ -128,7 +128,7 @@ def full_rebuild(skip_pauses: bool = False):
     else:
         statink_present = False
 
-    # Twitter goes last
+    # Twitter goes last (but only if not dated)
     if 'Twitter.json' in sources_contents[-1]:
         twitter_str = sources_contents[-1]
         sources_contents.remove(sources_contents[-1])
@@ -184,11 +184,11 @@ def full_rebuild(skip_pauses: bool = False):
     # 5. Calculate ELO
     if not skip_pauses:
         pause(True)
-    update_sources_with_skills()
+    update_sources_with_skills(clear_current_skills=True)
 
     print("Phase 5 done, complete!")
 
 
 if __name__ == '__main__':
     # full_rebuild(skip_pauses=False)
-    update_sources_with_skills()
+    update_sources_with_skills(clear_current_skills=True)
