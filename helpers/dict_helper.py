@@ -66,7 +66,14 @@ def serialize_uuids_as_dict(uuids: Mapping[Any, Iterable[UUID]]) -> Dict[str, Li
 def deserialize_uuids(info: Mapping, key: str, default=None) -> List[UUID]:
     """Read a dictionary at the key for a list of uuids and deserialize them.
     Returns a default if the key is not found."""
-    return from_list(lambda x: UUID(x), info.get(key, default))
+    uuids: List[UUID] = []
+    for x in info.get(key, default or []):
+        if x:
+            try:
+                uuids.append(UUID(x))
+            except ValueError as e:
+                print(f"ERROR in deserialize_uuids: {key=} with {x=}: {e}")
+    return uuids
 
 
 def deserialize_uuids_from_dict(info: Mapping) -> Dict[Any, List[UUID]]:

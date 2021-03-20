@@ -11,7 +11,7 @@ import re
 import traceback
 from asyncio import Queue
 from operator import itemgetter
-from typing import List, Dict, Callable, Any, Awaitable, Set
+from typing import List, Callable, Any, Awaitable, Set
 from uuid import UUID
 
 from discord import Color, Embed
@@ -19,7 +19,6 @@ from discord import Color, Embed
 from PyBot.constants import emojis
 from PyBot.constants.emojis import CROWN, TROPHY
 from PyBot.helpers.embed_helper import to_embed
-from core_classes.bracket import Bracket
 from core_classes.player import Player
 from core_classes.skill import Skill
 from core_classes.team import Team
@@ -423,10 +422,11 @@ def process_slapp(response: dict) -> (Embed, Color):
                                       inline=False)
 
                 player_skills = [(player, player.skill.clout) for player in players_in_team]
-                best_player = max(player_skills, key=itemgetter(1))[0]
-                builder.add_field(name='    Best player in the team by clout:',
-                                  value=truncate(best_player.name.value, 500, "…") + ": " + best_player.skill.message,
-                                  inline=False)
+                if player_skills:
+                    best_player = max(player_skills, key=itemgetter(1))[0]
+                    builder.add_field(name='    Best player in the team by clout:',
+                                      value=truncate(best_player.name.value, 500, "…") + ": " + best_player.skill.message,
+                                      inline=False)
 
                 builder.add_field(name='\tSources:',
                                   value=truncate('_' + team_sources + '_', 1023, "…_"),

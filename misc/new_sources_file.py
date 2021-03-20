@@ -190,5 +190,4 @@ def full_rebuild(skip_pauses: bool = False):
 
 
 if __name__ == '__main__':
-    # full_rebuild(skip_pauses=False)
-    update_sources_with_skills(clear_current_skills=True)
+    full_rebuild(skip_pauses=True)

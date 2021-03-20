@@ -1,8 +1,9 @@
-requests~=2.25.0
+requests~=2.23.0
 psycopg2~=2.8.6
 discord~=1.0.1
 python-dateutil~=2.8.1
 beautifulsoup4~=4.9.3
 Pillow
 smashggpy~=0.0.29
-trueskill~=0.4.5  # Optional
+pychal  # Challonge
+trueskill~=0.4.5

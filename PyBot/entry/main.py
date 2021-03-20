@@ -11,9 +11,11 @@ import discord
 import requests
 from discord import Role, Guild, Embed
 from discord.ext import commands
-from discord.ext.commands import Bot, Context, CommandNotFound
+from discord.ext.commands import Bot, Context, CommandNotFound, UserInputError
 
 from PyBot.constants.emojis import TROPHY, CROWN
+from PyBot.translators.GameModeTranslator import GameModeTranslator
+from PyBot.translators.StageTranslator import StageTranslator
 from core_classes.builtins import UNKNOWN_PLAYER
 from core_classes.player import Player
 from core_classes.skill import Skill
@@ -27,6 +29,8 @@ COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
 SlappQueueItem = namedtuple('SlappQueueItem', ('Context', 'str'))
 slapp_ctx_queue: Deque[SlappQueueItem] = deque()
+stage_translator = StageTranslator()
+mode_translator = GameModeTranslator()
 
 if __name__ == '__main__':
     intents = discord.Intents.default()
@@ -107,6 +111,28 @@ if __name__ == '__main__':
         pass_ctx=True)
     async def invite(ctx: Context):
         await ctx.send(f"https://discordapp.com/oauth2/authorize?client_id={CLIENT_ID}&scope=bot")
+
+    @bot.command(
+        name='Stage',
+        description='Lists the translations for the specified English stage in other languages',
+        brief="Translates the specified stage into other languages",
+        aliases=['stage', 'map'],
+        help=f'{COMMAND_PREFIX}stage the_stage_name',
+        pass_ctx=True
+    )
+    async def stage(ctx: Context, *, query):
+        await ctx.send(stage_translator.get_from_query(query))
+
+    @bot.command(
+        name='Game Mode',
+        description='Lists the translations for the specified English game mode in other languages',
+        brief="Translates the specified stage into other languages",
+        aliases=['gamemode', 'mode'],
+        help=f'{COMMAND_PREFIX}mode the_mode_name',
+        pass_ctx=True
+    )
+    async def stage(ctx: Context, *, query):
+        await ctx.send(mode_translator.get_from_query(query))
 
     @bot.command(
         name='Members',
@@ -273,7 +299,7 @@ if __name__ == '__main__':
 
 
     @bot.command(
-        name='Fight teams/players',
+        name='Fight',
         description="Get a match rating and predict the winner between two teams or two players.",
         brief="Two Splatoon teams/players to fight and rate winner",
         aliases=['fight', 'predict'],
@@ -291,6 +317,8 @@ if __name__ == '__main__':
     async def on_command_error(ctx, error):
         if isinstance(error, CommandNotFound):
             return
+        elif isinstance(error, UserInputError):
+            await ctx.send(error.__str__())
         raise error
 
     @bot.event

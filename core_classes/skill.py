@@ -90,7 +90,10 @@ class Skill:
 
     @staticmethod
     def from_dict(obj: dict) -> 'Skill':
-        assert isinstance(obj, dict)
+        if isinstance(obj, list) and len(obj) == 1 and isinstance(obj[0], dict):
+            obj = obj[0]
+
+        assert isinstance(obj, dict), f"Failed dict assertion: {obj}"
         return Skill(
             rating=Rating(
                 mu=obj.get("μ") if "μ" in obj else None,

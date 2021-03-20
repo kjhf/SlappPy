@@ -88,4 +88,4 @@ def update_sources_with_skills(
 
 
 if __name__ == '__main__':
-    update_sources_with_skills(True)
+    update_sources_with_skills(clear_current_skills=True)

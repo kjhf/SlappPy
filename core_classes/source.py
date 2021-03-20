@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Union, List, Optional
 from uuid import UUID, uuid4
 
@@ -59,15 +59,19 @@ class Source:
     @staticmethod
     def from_dict(obj: dict) -> 'Source':
         assert isinstance(obj, dict)
-        return Source(
-            guid=UUID(obj.get("Id")),
-            name=obj.get("Name", UNKNOWN_SOURCE),
-            brackets=from_list(lambda x: Bracket.from_dict(x), obj.get("Brackets")),
-            players=from_list(lambda x: Player.from_dict(x), obj.get("Players")),
-            teams=from_list(lambda x: Team.from_dict(x), obj.get("Teams")),
-            uris=from_list(lambda x: str(x), obj.get("Uris")),
-            start=datetime.fromtimestamp(obj["Start"]) if "Start" in obj else UNKNOWN_DATE_TIME,
-        )
+        try:
+            return Source(
+                guid=UUID(obj.get("Id")),
+                name=obj.get("Name", UNKNOWN_SOURCE),
+                brackets=from_list(lambda x: Bracket.from_dict(x), obj.get("Brackets")),
+                players=from_list(lambda x: Player.from_dict(x), obj.get("Players")),
+                teams=from_list(lambda x: Team.from_dict(x), obj.get("Teams")),
+                uris=from_list(lambda x: str(x), obj.get("Uris")),
+                start=Source.cs_ticks_to_datetime(obj["Start"]) if "Start" in obj else UNKNOWN_DATE_TIME,
+            )
+        except Exception as e:
+            print(f"Exception occurred loading Source with id {obj.get('Id', '(Unknown)')}: {e}, {e.args}")
+            raise e
 
     def to_dict(self) -> dict:
         result = {"Id": self.guid.__str__(), "Name": self.name}
@@ -80,5 +84,13 @@ class Source:
         if len(self.uris) > 0:
             result["Uris"] = self.uris
         if self.start != UNKNOWN_DATE_TIME:
-            result["Start"] = self.start.timestamp()
+            result["Start"] = Source.datetime_to_ticks(self.start)
         return result
+
+    @staticmethod
+    def cs_ticks_to_datetime(ticks) -> datetime:
+        return datetime(1, 1, 1) + timedelta(microseconds=ticks/10)
+
+    @staticmethod
+    def datetime_to_ticks(dt: datetime) -> int:
+        return int((dt - datetime(1, 1, 1)).total_seconds() * 10000000)
