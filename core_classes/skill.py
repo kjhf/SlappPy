@@ -1,3 +1,4 @@
+import json
 from typing import Optional, Iterable, List, Tuple
 
 import trueskill
@@ -24,6 +25,11 @@ class Skill:
 
     def to_dict(self) -> dict:
         return {"μ": self.rating.mu, "σ": self.rating.sigma}
+
+    def __str__(self):
+        return json.dumps(
+            {"clout": self.clout, "confidence": self.confidence, "μ": self.rating.mu, "σ": self.rating.sigma}
+        )
 
     @property
     def is_default(self) -> bool:
@@ -61,7 +67,8 @@ class Skill:
         object_name = name if name else 'them'
 
         return (
-            f"I don't know anything about {object_name} yet. ({clout_confidence}% confidence)" if clout_confidence < 1 else
+            f"I have literally nothing on {object_name}." if clout_confidence == 0 else
+            f"I don't know anything about {object_name} yet. ({clout_confidence}% confidence)" if clout_confidence < 2 else
             f"I don't know enough about {object_name} yet. Here's a *really* rough figure: {clout} ({clout_confidence}% confidence)" if clout_confidence < 5 else
             f"Early indications suggest {clout} clout for {object_name}. Really not sure about it. ({clout_confidence}% confidence)" if clout_confidence < 10 else
             f"Maybe {clout} clout for {object_name} but I'm not sure about it. ({clout_confidence}% confidence)" if clout_confidence < 33 else
@@ -212,6 +219,16 @@ class Skill:
 
         for i in range(0, len(teams[1])):
             team2[i].rating = teams[1][i]
+
+    @staticmethod
+    def from_division(normalised_value: int) -> 'Skill':
+        # TODO -- the following code seeds off of divs but it's way better to work out skill by games ...
+        # from core_classes.division import DIVISION_UNKNOWN_VAL
+        # if normalised_value != DIVISION_UNKNOWN_VAL and normalised_value < 9:
+        #     return Skill(rating=global_env().create_rating(mu=(9 - normalised_value) * trueskill.MU))
+        # else:
+        #     return Skill()
+        return Skill()
 
 
 def _as_rating_groups(skills: Iterable[Skill]) -> tuple:

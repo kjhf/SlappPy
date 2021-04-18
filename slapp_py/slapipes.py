@@ -309,8 +309,6 @@ def process_slapp(response: dict) -> (Embed, Color):
                                       inline=False)
 
                 clout_message = p.skill.message
-                if p.skill.is_default:
-                    clout_message += " (this is default.)"
                 builder.add_field(name='    Clout:',
                                   value=clout_message,
                                   inline=False)

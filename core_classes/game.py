@@ -1,21 +1,23 @@
 from uuid import UUID
-from typing import Set, Collection, Dict, Optional
+from typing import Set, Dict, Optional, Iterable
 
 from core_classes.score import Score
-from helpers.dict_helper import deserialize_uuids_from_dict, serialize_uuids_as_dict, first_key
+from helpers.dict_helper import serialize_uuids_as_dict, first_key, deserialize_uuids_from_dict_as_set
 
 
 class Game:
-    def __init__(self, score: Score = None, ids: Dict[UUID, Collection[UUID]] = None):
+    def __init__(self, score: Score = None, ids: Dict[UUID, Iterable[UUID]] = None):
         self.score: Score = score or Score()
-        self.ids: Dict[UUID, Set[UUID]] = ids or dict()
+        self.ids = dict()
+        for team_id in ids or []:
+            self.ids[team_id] = set(ids[team_id])
 
     @staticmethod
     def from_dict(obj: dict) -> 'Game':
         assert isinstance(obj, dict)
         return Game(
             score=Score.from_dict(obj.get("Score")) if "Score" in obj else None,
-            ids=deserialize_uuids_from_dict(obj.get("Ids", {}))
+            ids=deserialize_uuids_from_dict_as_set(obj.get("Ids", {}))
         )
 
     def to_dict(self) -> dict:

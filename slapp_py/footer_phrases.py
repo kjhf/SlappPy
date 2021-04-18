@@ -10,6 +10,7 @@ def get_random_footer_phrase() -> str:
 
 
 FOOTER_PHRASES = [
+    "SPLATOON 3! ",
     "You should Step Up, Europe. ",
     "Play LowInk. ",
     "Thank your TOs. ",
@@ -21,8 +22,7 @@ FOOTER_PHRASES = [
     "Trans rights! ",
     "Just ignore when I used to tell you how long a query took. I lied about it. ",
     "You can join the dev server at https://discord.gg/wZZv2Cr",
-    "I'm written in Python, Slapp is written in C#, but Slate is written in cups of tea "
-    "and something about base 4 GCAT. ",
+    "I'm written in Python, Slapp is written in C#, but Slate is written in cups of tea and base 4 GCAT. ",
     "Just ignore when I used to tell you how long a query took. I lied about it. ",
     "Don't shoot the messenger. ",
     "Slate says hi. ",
@@ -49,7 +49,7 @@ FOOTER_PHRASES = [
     "SSWWAAAAAANN 🦢 ",
     "Check out 'is 'arse 🐴 ",
     "*Sweats nervously* ",
-    "Did you take the red pill, or the blue pill? ",
+    "Did you take the red pill or the blue pill? ",
     "*You hear Megalovania playing off in the distance* ",
     "Do you remember when Nintendo released the SOS 2020 poster? Good times. ",
     "Sus. ",
@@ -62,4 +62,13 @@ FOOTER_PHRASES = [
     "Ceci n'est pas une pipe. ",
     "Your weapon of the day is... %weapon%! ",
     "The spirits tell me... %weapon%! ",
+    "We're only human after all. ",
+    "Do not be sad because they left, be happy because they existed. ",
+    "Buy it, use it, break it, fix it, trash it, change it, mail, upgrade it... ",
+    "Soon may the Wellerman come, to bring us sugar and tea and rum... ",
+    "What is love? ",
+    "You will be baked. And then there will be cake. ",
+    "The square root of rope is string. ",
+    "At some point in their lives 1 in 6 children will be abducted by the Dutch. ",
+    "Humans can survive underwater. But not for very long. "
 ]

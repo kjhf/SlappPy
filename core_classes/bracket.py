@@ -13,8 +13,6 @@ class Bracket:
     def __init__(self,
                  name: Optional[str],
                  matches: Optional[List[Game]] = None,
-                 players: Optional[List[UUID]] = None,
-                 teams: Optional[List[UUID]] = None,
                  placements: Optional[Placement] = None):
         self.name: str = name or UNKNOWN_BRACKET
         self.matches: Set[Game] = matches or set()

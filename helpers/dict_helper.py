@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping
+from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set
 from uuid import UUID
 
 T = TypeVar("T")
@@ -76,11 +76,11 @@ def deserialize_uuids(info: Mapping, key: str, default=None) -> List[UUID]:
     return uuids
 
 
-def deserialize_uuids_from_dict(info: Mapping) -> Dict[Any, List[UUID]]:
+def deserialize_uuids_from_dict_as_set(info: Mapping) -> Dict[Any, Set[UUID]]:
     """Read a dictionary for its top-level keys and the uuids underneath."""
     result = dict()
     for key in info:
-        result[key] = deserialize_uuids(info, key)
+        result[key] = set(deserialize_uuids(info, key))
     return result
 
 

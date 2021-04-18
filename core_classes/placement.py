@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Iterable, Union
 from uuid import UUID
 
-from helpers.dict_helper import serialize_uuids_as_dict, deserialize_uuids_from_dict
+from helpers.dict_helper import serialize_uuids_as_dict, deserialize_uuids_from_dict_as_set
 
 
 class Placement:
@@ -15,21 +15,19 @@ class Placement:
         :param teams_by_placement: A dictionary containing ranks (int or str) with team uuid values.
         """
         self.players_by_placement = dict()
-        if players_by_placement:
-            for rank in players_by_placement:
-                self.players_by_placement[int(rank)] = set(players_by_placement[rank])
+        for rank in players_by_placement or []:
+            self.players_by_placement[int(rank)] = set(players_by_placement[rank])
 
         self.teams_by_placement = dict()
-        if teams_by_placement:
-            for rank in teams_by_placement:
-                self.teams_by_placement[int(rank)] = set(teams_by_placement[rank])
+        for rank in teams_by_placement or []:
+            self.teams_by_placement[int(rank)] = set(teams_by_placement[rank])
 
     @staticmethod
     def from_dict(obj: dict) -> 'Placement':
         assert isinstance(obj, dict)
         return Placement(
-            players_by_placement=deserialize_uuids_from_dict(obj.get("PlayersByPlacement", {})),
-            teams_by_placement=deserialize_uuids_from_dict(obj.get("TeamsByPlacement", {}))
+            players_by_placement=deserialize_uuids_from_dict_as_set(obj.get("PlayersByPlacement", {})),
+            teams_by_placement=deserialize_uuids_from_dict_as_set(obj.get("TeamsByPlacement", {}))
         )
 
     def to_dict(self) -> dict:

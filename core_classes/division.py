@@ -55,7 +55,7 @@ class Division:
     @property
     def normalised_value(self) -> int:
         if self.div_type == 'LUTI':
-            return self.value
+            return self.value if self.value != DIVISION_X_PLUS else DIVISION_X  # With the addition of S11, X+ is no longer a thing. Just group X and X+ together.
         elif self.div_type == 'EBTV':
             return self.value + 2
         elif self.div_type == 'DSB':
@@ -79,11 +79,14 @@ class Division:
 
     def __cmp__(self, other):
         if isinstance(other, Division):
-            return self.normalised_value.__cmp__(other.normalised_value)
+            x = self.normalised_value
+            y = other.normalised_value
+            return (x > y) - (x < y)
         else:
             raise TypeError(f'Cannot compare a Division to a non-Division type: {other}')
 
     def __lt__(self, other):
+        """Remember, lower div is better."""
         return self.__cmp__(other) == -1
 
     @staticmethod

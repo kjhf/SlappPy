@@ -38,6 +38,12 @@ class Source:
     def __str__(self):
         return self.name
 
+    @property
+    def tournament_id(self) -> str:
+        """Get the tournament id from the source name. This substrings past the last -."""
+        # rpartition finds the last '-', we want the substring past that to the end which is [2].
+        return self.name.rpartition('-')[2]
+
     @staticmethod
     def deserialize_uuids(info: dict, key: str = "S") -> List[UUID]:
         sources: List[UUID] = []

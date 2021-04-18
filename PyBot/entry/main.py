@@ -24,6 +24,7 @@ from slapp_py.slapipes import initialise_slapp, query_slapp, process_slapp, slap
 from slapp_py.slapp_response_object import SlappResponseObject
 from slapp_py.weapons import get_random_weapon
 from tokens import BOT_TOKEN, CLIENT_ID, OWNER_ID
+from vlee.battlefyToolkit import tournament_ids
 
 COMMAND_PREFIX = '~'
 IMAGE_FORMATS = ["image/png", "image/jpeg", "image/jpg"]
@@ -220,17 +221,17 @@ if __name__ == '__main__':
         description="Verify a signed-up team.",
         help=f'{COMMAND_PREFIX}verify <team_slug>',
         pass_ctx=True)
-    async def verify(ctx: Context, team_slug_or_confirmation: Optional[str], low_ink_id: Optional[str]):
-        if not low_ink_id:
-            low_ink_id = '6019b6d0ce01411daff6bca6'
+    async def verify(ctx: Context, team_slug_or_confirmation: Optional[str], tourney_id: Optional[str]):
+        if not tourney_id:
+            tourney_id = get_latest_ipl()
 
         from misc.download_from_battlefy_result import download_from_battlefy
-        tournament = list(download_from_battlefy(low_ink_id))
+        tournament = list(download_from_battlefy(tourney_id))
         if isinstance(tournament, list) and len(tournament) == 1:
             tournament = tournament[0]
 
         if len(tournament) == 0:
-            await ctx.send(f"I couldn't download the latest tournament data 😔 (id: {low_ink_id})")
+            await ctx.send(f"I couldn't download the latest tournament data 😔 (id: {tourney_id})")
             return
 
         if not team_slug_or_confirmation:
@@ -558,6 +559,9 @@ if __name__ == '__main__':
                 await send_slapp(ctx=ctx,
                                  success_message=success_message,
                                  response=response)
+
+    def get_latest_ipl():
+        return tournament_ids('inkling-performance-labs')[0]
 
 
     loop = asyncio.get_event_loop()

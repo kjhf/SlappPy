@@ -68,7 +68,6 @@ TOURNAMENT_INFO_MINIMAL_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournament
 TEAMS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + '/tournaments/%s/teams'
 
 
-# TODO - implement force download
 def download_from_battlefy(ids: Union[str, List[str]], force: bool = False) -> Generator[List[dict], None, None]:
     if isinstance(ids, str):
         if ids.startswith('['):
@@ -77,14 +76,11 @@ def download_from_battlefy(ids: Union[str, List[str]], force: bool = False) -> G
             ids = [ids]
 
     for id_to_fetch in ids:
-        if get_or_fetch_tourney_info_file(id_to_fetch):
-            yield get_or_fetch_tourney_teams_file(id_to_fetch)
-        else:
-            print(f'Nothing exists at {id_to_fetch}.')
-            continue
+        # This also gets the info file.
+        yield get_or_fetch_tourney_teams_file(id_to_fetch, force=force)
 
 
-def get_or_fetch_tourney_ids() -> Set[str]:
+def get_or_fetch_tourney_ids(force: bool = False) -> Set[str]:
     """Get a set of tourney ids from the Orgs that we watch. This will download the tourney info file."""
 
     result = set()
@@ -92,20 +88,20 @@ def get_or_fetch_tourney_ids() -> Set[str]:
         tournaments = battlefyToolkit.tournament_ids(org)
         if tournaments:
             for t in tournaments:
-                tournament_info = get_or_fetch_tourney_info_file(t)
+                tournament_info = get_or_fetch_tourney_info_file(t, force=force)
                 if tournament_info and tournament_info.get("gameName") == "Splatoon 2":
                     result.add(t)
     return result
 
 
-def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str) -> Optional[dict]:
+def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str, force: bool = False) -> Optional[dict]:
     if not exists(TOURNEY_INFO_SAVE_DIR):
         makedirs(TOURNEY_INFO_SAVE_DIR)
 
     filename: str = f'{tourney_id_to_fetch}.json'
     matched_tourney_files = glob.glob(join(TOURNEY_INFO_SAVE_DIR, f'*{filename}'))
     full_path = matched_tourney_files[0] if len(matched_tourney_files) else join(TOURNEY_INFO_SAVE_DIR, filename)
-    if not isfile(full_path):
+    if force or not isfile(full_path):
         tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT.format(tourney_id=tourney_id_to_fetch))
 
         if len(tourney_contents) == 0:
@@ -137,23 +133,23 @@ def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str) -> Optional[dict]:
     return tourney_contents
 
 
-def get_stage_ids_for_tourney(tourney_id_to_fetch: str) -> Set[str]:
+def get_stage_ids_for_tourney(tourney_id_to_fetch: str, force: bool = False) -> Set[str]:
     """"Returns stage (id, name) for the specified tourney"""
-    _tourney_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch) or set()
+    _tourney_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch, force=force) or set()
     return set(_tourney_contents.get('stageIDs', set()))
 
 
-def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str) -> Optional[dict]:
+def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, force: bool = False) -> Optional[dict]:
     if not tourney_id_to_fetch or not stage_id_to_fetch:
         raise ValueError(f'get_or_fetch_stage_file: Expected ids. {tourney_id_to_fetch=} {stage_id_to_fetch=}')
 
-    _stages = get_stage_ids_for_tourney(tourney_id_to_fetch)
+    _stages = get_stage_ids_for_tourney(tourney_id_to_fetch, force=force)
     _stages = set([stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)])
     assert stage_id_to_fetch in _stages
 
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
                        f'{stage_id_to_fetch}-battlefy.json')
-    if not isfile(_stage_path):
+    if force or not isfile(_stage_path):
         _stage_contents = fetch_address(STAGE_INFO_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch))
         if len(_stage_contents) == 0:
             print(f'ERROR get_or_fetch_stage_file: Nothing exists at {tourney_id_to_fetch=} / {stage_id_to_fetch=}')
@@ -173,14 +169,14 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str) ->
     return _stage_contents
 
 
-def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str) -> Optional[dict]:
+def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, force: bool = False) -> Optional[dict]:
     _stages = get_stage_ids_for_tourney(tourney_id_to_fetch)
     _stages = set([stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)])
     assert stage_id_to_fetch in _stages
 
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
                        f'{stage_id_to_fetch}-standings.json')
-    if not isfile(_stage_path):
+    if force or not isfile(_stage_path):
         _stage_contents = fetch_address(STAGE_STANDINGS_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch))
         if len(_stage_contents) == 0:
             print(f'ERROR get_or_fetch_standings_file: Nothing exists at {tourney_id_to_fetch=} / {stage_id_to_fetch=}')
@@ -197,14 +193,14 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
     return _stage_contents
 
 
-def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str) -> Optional[List[dict]]:
+def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str, force: bool = False) -> Optional[List[dict]]:
     if not exists(TOURNEY_TEAMS_SAVE_DIR):
         makedirs(TOURNEY_TEAMS_SAVE_DIR)
 
     filename: str = f'{tourney_id_to_fetch}.json'
     matched_tourney_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
     full_path = matched_tourney_files[0] if len(matched_tourney_files) else join(TOURNEY_TEAMS_SAVE_DIR, filename)
-    if not isfile(full_path):
+    if force or not isfile(full_path):
         teams_contents = fetch_address(TEAMS_FETCH_ADDRESS_FORMAT % tourney_id_to_fetch)
 
         if len(teams_contents) == 0:
@@ -212,7 +208,7 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str) -> Optional[List[d
             return None
 
         # To name this file, we need the tourney file that goes with it.
-        info_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch)
+        info_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch, force=force)
 
         if '_id' in info_contents and 'slug' in info_contents and 'startTime' in info_contents:
             start_time: datetime = isoparse(info_contents['startTime'])
@@ -230,6 +226,12 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str) -> Optional[List[d
         # else
         save_as_json_to_file(full_path, teams_contents)
         print(f'OK! (Saved read tourney teams file to {full_path})')
+
+        if force:
+            # We just downloaded so no need to force get this again
+            for stage_id in get_stage_ids_for_tourney(tourney_id_to_fetch, force=False):
+                get_or_fetch_stage_file(tourney_id_to_fetch, stage_id, force=True)
+
     else:
         teams_contents = utils.load_json_from_file(full_path)
 
@@ -302,18 +304,13 @@ def is_valid_battlefy_id(_battlefy_id: str) -> bool:
 
 
 def get_source_by_tourney_id(tourney_id: str,
-                             sources: List[dict]) -> Optional[dict]:
-    for source_dict_item in sources:
-        source_name: str = source_dict_item["Name"]
-        if not source_name.endswith(tourney_id):
-            continue
-        return source_dict_item
-    return None
+                             sources: List[Source]) -> Optional[Source]:
+    return next((s for s in sources if s.tournament_id == tourney_id), None)
 
 
 def add_tourney_placement_to_source(tourney_id: str,
                                     players: Iterable[Player],
-                                    sources: List[dict]) -> bool:
+                                    sources: List[Source]) -> bool:
     stage_ids = set([stage_id for stage_id in get_stage_ids_for_tourney(tourney_id)
                      if is_valid_battlefy_id(stage_id)])
     if len(stage_ids) == 0:
@@ -321,15 +318,12 @@ def add_tourney_placement_to_source(tourney_id: str,
         return False
 
     # Find the suitable source in the latest sources snapshot
-    source_dict = get_source_by_tourney_id(tourney_id, sources)
-    if source_dict:
-        source = Source.from_dict(source_dict)
-        sources.remove(source_dict)
-    else:
+    source = get_source_by_tourney_id(tourney_id, sources)
+    if not source:
         print(f"Could not find a source in the snapshot that matches {tourney_id=}. Not adding.")
         return False
 
-    if source_dict.get("Bracket", None) is not None:
+    if source.brackets:
         print(f"Brackets already exist for this source. Skipping.")
         return False
 
@@ -337,7 +331,7 @@ def add_tourney_placement_to_source(tourney_id: str,
 
     # For each stage, translate the stage bracket into a Bracket object
     for stage_id in stage_ids:
-        stage_contents = get_or_fetch_stage_file(tourney_id, stage_id)
+        stage_contents = get_or_fetch_stage_file(tourney_id, stage_id, force=False)
         if not stage_contents:
             continue
 
@@ -402,7 +396,7 @@ def add_tourney_placement_to_source(tourney_id: str,
             # Loop to next match
 
         # Add placements
-        standings_contents = get_or_fetch_standings_file(tourney_id, stage_id)
+        standings_contents = get_or_fetch_standings_file(tourney_id, stage_id, force=False)
         if standings_contents:
             # If place is present (i.e. for finals), order by that.
             standings_placements = {}
@@ -474,13 +468,12 @@ def add_tourney_placement_to_source(tourney_id: str,
     # Save the snapshot file
     dict_to_save = source.to_dict()
     utils.assert_is_dict_recursive(dict_to_save)
-    sources.append(dict_to_save)
     return True
 
 
 def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None,
                                    destination_sources_path: Optional[str] = None,
-                                   sources: Optional[List[dict]] = None,
+                                   sources: Optional[List[Source]] = None,
                                    players: Optional[List[Player]] = None):
 
     if not sources:
@@ -494,12 +487,11 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
         assert players, "No Players found in the Players snapshot file."
 
     if not tourney_ids:
-        # rpartition finds the last '-', we want the substring past that to the end which is [2].
-        tourney_ids = set([source["Name"].rpartition('-')[2] for source in sources
-                           if not source.get("Brackets", None)
-                           and '-stat.ink-' not in source.get("Name", None)
-                           and '-LUTI-' not in source.get("Name", None)
-                           and 'Twitter-' not in source.get("Name", None)])
+        tourney_ids = set([source.tournament_id for source in sources
+                           if not source.brackets
+                           and '-stat.ink-' not in source.name
+                           and '-LUTI-' not in source.name
+                           and 'Twitter-' not in source.name])
 
     if not destination_sources_path:
         destination_sources_path = \
@@ -522,15 +514,38 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
             print(f"Finished {tourney_id=} but no changes.")
 
     print(f"All done, saving sources to: " + destination_sources_path)
-    utils.save_as_json_to_file(destination_sources_path, sources)
+    utils.save_as_json_to_file(destination_sources_path, [source.to_dict() for source in sources])
 
+
+def force_update_from_battlefy_slug(incoming_slug: str):
+    """Redownload all sources that contain a given Battlefy Slug"""
+    sources = [source for source in load_latest_snapshot_sources_file()
+               if '-stat.ink-' not in source.name
+               and '-LUTI-' not in source.name
+               and 'Twitter-' not in source.name]
+
+    filtered = \
+        [
+            # Filtering sources, if any ...
+            source for source in sources if any(
+                # players in this source...
+                any(
+                    # have a battlefy slug that matches our input (lower-cased)
+                    incoming_slug.lower() == slug.value.lower() for slug in player.battlefy.slugs
+                ) for player in source.players
+            )
+        ]
+
+    for source in filtered:
+        print("Force downloading " + source.name)
+        _ = list(download_from_battlefy(source.tournament_id, force=True))
+
+
+# if __name__ == '__main__':
+#     force_update_from_battlefy_slug()
+#     sys.exit(0)
 
 if __name__ == '__main__':
-    # Find the latest snapshot file.
-    global_snapshot_sources_path = get_latest_snapshot_sources_file()
-    assert global_snapshot_sources_path, "Snapshot file not found."
-    print(f'Using snapshot file: {global_snapshot_sources_path}')
-
     # Ask for the tournament to update
     global_ids = \
         [
@@ -542,23 +557,23 @@ if __name__ == '__main__':
         sys.exit(0)
 
     print('Loading sources...')
-    global_sources: List[dict] = utils.load_json_from_file(global_snapshot_sources_path)
+    global_sources: List[Source] = load_latest_snapshot_sources_file()
+    assert global_sources
+    global_snapshot_sources_path = get_latest_snapshot_sources_file()
 
     if global_ids[0] == '*':
-        # rpartition finds the last '-', we want the substring past that to the end which is [2].
-        global_ids = set([source["Name"].rpartition('-')[2] for source in global_sources
-                          if not source.get("Brackets", None)
-                          and '-stat.ink-' not in source.get("Name", None)
-                          and '-LUTI-' not in source.get("Name", None)
-                          and 'Twitter-' not in source.get("Name", None)])
+        global_ids = set([source.tournament_id for source in global_sources
+                          if not source.brackets
+                          and '-stat.ink-' not in source.name
+                          and '-LUTI-' not in source.name
+                          and 'Twitter-' not in source.name])
 
     elif global_ids[0] == 'DISCARD':
-        # rpartition finds the last '-', we want the substring past that to the end which is [2].
-        global_ids = set([source["Name"].rpartition('-')[2] for source in global_sources
-                          if '-stat.ink-' not in source.get("Name", None)
-                          and '-LUTI-' not in source.get("Name", None)
-                          and 'Twitter-' not in source.get("Name", None)])
+        global_ids = set([source.tournament_id for source in global_sources
+                          if '-stat.ink-' not in source.name
+                          and '-LUTI-' not in source.name
+                          and 'Twitter-' not in source.name])
 
     update_sources_with_placements(tourney_ids=global_ids,
                                    destination_sources_path=global_snapshot_sources_path + ".edited.json",
-                                   sources=global_snapshot_sources_path)
+                                   sources=global_sources)
