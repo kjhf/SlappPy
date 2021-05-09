@@ -1,23 +1,32 @@
-from typing import Optional
+from typing import Optional, Dict, Callable
 
 
 class GameModeTranslator:
+    fn_lookup: Dict[str, Callable[[], str]]
+
     def __init__(self):
         self.fn_lookup = {}
         for fn in dir(GameModeTranslator):
             if fn.startswith('translate_'):
                 # Add the whole mode name
                 name = fn.rpartition('translate_')[2]
-                self.fn_lookup[name.replace('_', '')] = fn
+                self.fn_lookup[name.replace('_', '')] = getattr(self, fn)
 
                 # But also break up the stage into its individual words, so we can be lazy in searching
                 # e.g. match 'splat' and 'zones' to translate_splat_zones
                 single_word_names = name.split('_')
                 for single_name in single_word_names:
-                    self.fn_lookup[single_name] = fn
+                    self.fn_lookup[single_name] = getattr(self, fn)
 
         # Remove battle -- it's of no use to us.
         self.fn_lookup.pop('battle')
+
+        # Add in common abbreviations
+        self.fn_lookup['cb'] = GameModeTranslator.translate_clam_blitz
+        self.fn_lookup['rm'] = GameModeTranslator.translate_rainmaker
+        self.fn_lookup['sr'] = GameModeTranslator.translate_salmon_run
+        self.fn_lookup['sz'] = GameModeTranslator.translate_splat_zones
+        self.fn_lookup['tc'] = GameModeTranslator.translate_tower_control
 
     @staticmethod
     def translate_regular_battle():
@@ -260,7 +269,4 @@ class GameModeTranslator:
     def get_from_query(self, query: str) -> Optional[str]:
         query = query.lower().replace(' ', '').replace('\'', '').replace('-', '')
         matched = self.fn_lookup.get(query, None)
-        if matched:
-            return getattr(self, matched)()
-        else:
-            return None
+        return matched() if matched else None

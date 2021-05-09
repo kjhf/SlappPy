@@ -1,20 +1,22 @@
-from typing import Optional
+from typing import Optional, Dict, Callable
 
 
 class StageTranslator:
+    fn_lookup: Dict[str, Callable[[], str]]
+
     def __init__(self):
         self.fn_lookup = {}
         for fn in dir(StageTranslator):
             if fn.startswith('translate_'):
                 # Add the whole stage name
                 name = fn.rpartition('translate_')[2]
-                self.fn_lookup[name.replace('_', '')] = fn
+                self.fn_lookup[name.replace('_', '')] = getattr(self, fn)
 
                 # But also break up the stage into its individual words, so we can be lazy in searching
                 # e.g. match 'walleye' and 'warehouse' to translate_walleye_warehouse
                 single_word_names = name.split('_')
                 for single_name in single_word_names:
-                    self.fn_lookup[single_name] = fn
+                    self.fn_lookup[single_name] = getattr(self, fn)
 
     @staticmethod
     def translate_urchin_underpass():
@@ -443,7 +445,4 @@ class StageTranslator:
     def get_from_query(self, query: str) -> Optional[str]:
         query = query.lower().replace(' ', '').replace('\'', '').replace('-', '')
         matched = self.fn_lookup.get(query, None)
-        if matched:
-            return getattr(self, matched)()
-        else:
-            return None
+        return matched() if matched else None
