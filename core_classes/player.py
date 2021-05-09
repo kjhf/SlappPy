@@ -146,7 +146,7 @@ class Player:
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
             sendou_profiles=from_list(lambda x: Sendou.from_dict(x), obj.get("Sendou")),
             skill=Skill.from_dict(obj.get("Skill")) if "Skill" in obj else Skill(),
-            sources=Source.deserialize_uuids(obj),
+            sources=Source.deserialize_source_uuids(obj),
             teams=deserialize_uuids(obj, "Teams"),
             twitch_profiles=from_list(lambda x: Twitch.from_dict(x), obj.get("Twitch")),
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),

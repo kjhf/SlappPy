@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from core_classes.bracket import Bracket
 from core_classes.player import Player
 from core_classes.team import Team
-from helpers.dict_helper import to_list, from_list
+from helpers.dict_helper import to_list, from_list, deserialize_uuids
 
 UNKNOWN_SOURCE = "(Unnamed Source)"
 """Displayed string for an unknown source."""
@@ -45,22 +45,8 @@ class Source:
         return self.name.rpartition('-')[2]
 
     @staticmethod
-    def deserialize_uuids(info: dict, key: str = "S") -> List[UUID]:
-        sources: List[UUID] = []
-        incoming_sources = info.get(key, [])
-        if not isinstance(incoming_sources, list):
-            incoming_sources = [incoming_sources]
-
-        for s in incoming_sources:
-            if isinstance(s, str):
-                sources.append(UUID(s))
-            elif isinstance(s, UUID):
-                sources.append(s)
-            elif isinstance(s, Source):
-                sources.append(s.guid)
-            else:
-                print(f"Could not convert s into UUID ({s=})")
-        return sources
+    def deserialize_source_uuids(info: dict, key: str = "S") -> List[UUID]:
+        return deserialize_uuids(info, key, [(Source, lambda s: s.guid)])
 
     @staticmethod
     def from_dict(obj: dict) -> 'Source':

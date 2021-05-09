@@ -5,7 +5,7 @@ import sys
 from os.path import join, relpath
 from typing import Set
 
-from helpers.str_helper import equals_ignore_case
+from helpers.str_helper import equals_ignore_case, is_none_or_whitespace
 from misc import utils
 from misc.download_from_battlefy_result import get_or_fetch_tourney_ids, get_or_fetch_tourney_teams_file, \
     update_sources_with_placements
@@ -54,6 +54,20 @@ def _phase_1() -> Set[str]:
     return full_tourney_ids
 
 
+def _phase_3(new_sources_file_path: str):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        asyncio.gather(
+            initialise_slapp(receive_slapp_response, "--rebuild " + new_sources_file_path)
+        )
+    )
+
+
+def _load_sources_file(path: str = join(SLAPP_APP_DATA, 'sources.yaml')):
+    with open(path, 'r', encoding='utf-8') as infile:
+        return infile.read().split('\n')
+
+
 def full_rebuild(skip_pauses: bool = False):
     # Plan of attack:
     # THIS IS A FULL REBUILD and we shouldn't have to do this every time.
@@ -73,8 +87,7 @@ def full_rebuild(skip_pauses: bool = False):
 
     # 2. Updates sources list
     # Current sources:
-    with open(join(SLAPP_APP_DATA, 'sources.yaml'), 'r', encoding='utf-8') as infile:
-        sources_contents = infile.read().split('\n')
+    sources_contents = _load_sources_file()
 
     # Sources now that we've pulled in the tourney files:
     updated_tourney_ids = set()
@@ -155,11 +168,15 @@ def full_rebuild(skip_pauses: bool = False):
     if twitter_str:
         sources_contents.append(twitter_str)
 
+    # Remove blank lines
+    sources_contents = list(filter(lambda x: not is_none_or_whitespace(x), sources_contents))
+
     new_sources_file_path = join(SLAPP_APP_DATA, 'sources_new.yaml')
     save_text_to_file(path=new_sources_file_path,
                       content='\n'.join(sources_contents))
 
     print(f"Phase 2 done. {updated_tourney_ids=}")
+
     # 3. Rebuild
     # if yes, call --rebuild [path]
     do_rebuild = True
@@ -167,12 +184,7 @@ def full_rebuild(skip_pauses: bool = False):
         do_rebuild = ask("Is a rebuild needed?")
 
     if do_rebuild:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            asyncio.gather(
-                initialise_slapp(receive_slapp_response, "--rebuild " + new_sources_file_path)
-            )
-        )
+        _phase_3(new_sources_file_path)
 
     print("Phase 3 done.")
     # 4. Add in the placements
@@ -190,4 +202,6 @@ def full_rebuild(skip_pauses: bool = False):
 
 
 if __name__ == '__main__':
-    full_rebuild(skip_pauses=True)
+    _phase_3(join(SLAPP_APP_DATA, 'sources.yaml'))
+    update_sources_with_placements()
+    update_sources_with_skills(clear_current_skills=True)

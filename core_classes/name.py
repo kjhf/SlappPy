@@ -34,7 +34,7 @@ class Name:
         from core_classes.source import Source
         return Name(
             value=obj.get("Value", ""),
-            sources=Source.deserialize_uuids(obj)
+            sources=Source.deserialize_source_uuids(obj)
         )
 
     def to_dict(self) -> dict:

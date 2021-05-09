@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set
+from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set, Optional, Type, Tuple
 from uuid import UUID
 
 T = TypeVar("T")
@@ -63,16 +63,46 @@ def serialize_uuids_as_dict(uuids: Mapping[Any, Iterable[UUID]]) -> Dict[str, Li
     return result
 
 
-def deserialize_uuids(info: Mapping, key: str, default=None) -> List[UUID]:
-    """Read a dictionary at the key for a list of uuids and deserialize them.
-    Returns a default if the key is not found."""
+def deserialize_uuids(info: Mapping,
+                      key: Optional[str] = None,
+                      additional_maps: Iterable[Tuple[Type, Callable[[Any], UUID]]] = None) -> List[UUID]:
+    """
+    Read `info` dictionary at `key` for a list of uuids and deserialize them.
+    If `key` is None, then the info's values/child keys will be used instead.
+    Use `additional_maps` to specify any further Type to uuid conversions.
+    Returns [] if key not found.
+    """
     uuids: List[UUID] = []
-    for x in info.get(key, default or []):
-        if x:
-            try:
-                uuids.append(UUID(x))
-            except ValueError as e:
-                print(f"ERROR in deserialize_uuids: {key=} with {x=}: {e}")
+    if not key or key == 'None':
+        incoming_uuids = info
+    else:
+        incoming_uuids = info.get(key, [])
+
+    if not isinstance(incoming_uuids, list):
+        incoming_uuids = [incoming_uuids]
+
+    if not incoming_uuids:
+        return []
+
+    for s in incoming_uuids:
+        try:
+            if not s:
+                pass
+            elif isinstance(s, str):
+                if s == 'None':
+                    continue
+                uuids.append(UUID(s))
+            elif isinstance(s, UUID):
+                uuids.append(s)
+            else:
+                for mapping in additional_maps or []:
+                    if isinstance(s, mapping[0]):
+                        fn: Callable[[Any], UUID] = mapping[1]
+                        uuids.append(fn(s))
+                        continue
+                print(f"Could not convert s into UUID ({s=})")
+        except ValueError as e:
+            print(f"ERROR in deserialize_uuids: {info=} with {key=}: {e}")
     return uuids
 
 
