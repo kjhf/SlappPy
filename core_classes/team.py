@@ -101,10 +101,18 @@ class Team:
         """The most recent division of the team or Division.Unknown."""
         return self.divisions[0] if len(self.divisions) > 0 else division.Unknown
 
+    @property
+    def div_history(self) -> str:
+        """The team's division history as a display str."""
+        if self.current_div.is_unknown:
+            return ""
+        else:
+            return ' ⬅ '.join([d.__str__() for d in self.divisions[:3]])
+
     def __str__(self):
         return f'{(self.tag.value + " ") if self.tag else ""}' \
                f'{self.name}' \
-               f'{(f" ({self.current_div})" if not self.current_div.is_unknown else "")}'
+               f'{(f" ({self.div_history})" if not self.current_div.is_unknown else "")}'
 
     @staticmethod
     def from_dict(obj: dict) -> 'Team':
@@ -116,7 +124,7 @@ class Team:
             clan_tags=from_list(lambda x: ClanTag.from_dict(x), obj.get("ClanTags")),
             divisions=from_list(lambda x: Division.from_dict(x), obj.get("Divisions")),
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
-            sources=Source.deserialize_uuids(obj),
+            sources=Source.deserialize_source_uuids(obj),
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),
             guid=UUID(obj.get("Id"))
         )

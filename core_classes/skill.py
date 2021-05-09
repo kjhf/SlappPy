@@ -1,8 +1,10 @@
 import json
-from typing import Optional, Iterable, List, Tuple
+from cmath import sqrt
+from typing import Optional, Iterable, List, Tuple, Collection
 
 import trueskill
 from trueskill import Rating, expose, global_env
+from trueskill.backends import cdf
 
 SCALAR = 60  # Brings the clout to 3000 range.
 
@@ -77,7 +79,7 @@ class Skill:
             f"I'd put {object_name} at {clout} clout, give or take. ({clout_confidence}% confidence)" if clout_confidence < 67 else
             f"{subject_name} about {clout} clout, fairly sure. ({clout_confidence})% confidence)" if clout_confidence < 80 else
             f"I'd rate {object_name} at {clout} clout. ({clout_confidence}% confidence)" if clout_confidence < 90 else
-            f"{subject_name} {clout} clout. ({clout_confidence}%  confidence)"
+            f"{subject_name} {clout} clout. ({clout_confidence}% confidence)"
         )
 
     @staticmethod
@@ -94,6 +96,18 @@ class Skill:
             f"I'd be interested to see this game. ({chance}% chance of fair game)" if chance < 90 else
             f"I've no idea which way this would go! ({chance}% chance of fair game)"
         )
+
+    @staticmethod
+    def make_message_win(favouring_team_1, favouring_team_2, team_1, team_2):
+        """Get a message indicating the win chance."""
+        if favouring_team_1 < 50:
+            return f"I think {team_2} are going to win this. ({100-favouring_team_1}-{100-favouring_team_2}% of win)"
+        elif favouring_team_2 > 50:
+            return f"I think {team_1} are going to win this. ({favouring_team_2}-{favouring_team_1}% of win)"
+        elif (favouring_team_1 - favouring_team_2) > 0:
+            return f"It depends on who is playing. I think {team_1} will win this. ({favouring_team_2}-{favouring_team_1}% of win)"
+        else:
+            return f"It depends on who is playing. I think {team_2} will win this. ({100-favouring_team_1}-{100-favouring_team_2}% of win)"
 
     @staticmethod
     def from_dict(obj: dict) -> 'Skill':
@@ -135,6 +149,28 @@ class Skill:
         return (int(minimum), int(minimum_confidence)), (int(maximum), int(maximum_confidence))
 
     @staticmethod
+    def calculate_win_probability(team1: Iterable['Skill'], team2: Iterable['Skill']) -> (int, int):
+        """
+        Calculate the percentage chance of a win for team1.
+
+        Returns a tuple of ints -- percentages,
+          - The first being the percentage win chance for team1, if team1 has their best roster on and team2 has their worst,
+          - The second being the percentage win chance for team1, if team1 has their worst roster on and team2 has their best.
+        """
+
+        return \
+            int(
+                Skill._calculate_win_probability_internal(
+                    Skill._get_maximum_clout_team_rating_group(team1),
+                    Skill._get_minimum_clout_team_rating_group(team2)
+                ) * 100), \
+            int(
+                Skill._calculate_win_probability_internal(
+                    Skill._get_minimum_clout_team_rating_group(team1),
+                    Skill._get_maximum_clout_team_rating_group(team2)
+                ) * 100)
+
+    @staticmethod
     def calculate_quality_of_game_players(player1: 'Skill', player2: 'Skill') -> int:
         """
         Calculate the quality of the game, which is the likelihood of the game being a draw (evenly balanced).
@@ -156,6 +192,14 @@ class Skill:
         favouring_team2 = trueskill.quality(rating_groups=[Skill._get_minimum_clout_team_rating_group(team1),
                                                            Skill._get_maximum_clout_team_rating_group(team2)])
         return int(favouring_team1 * 100), int(favouring_team2 * 100)
+
+    @staticmethod
+    def _calculate_win_probability_internal(a: Collection[Rating], b: Collection[Rating]) -> int:
+        delta_mu = sum([x.mu for x in a]) - sum([x.mu for x in b])
+        sum_sigma = sum([x.sigma ** 2 for x in a]) + sum([x.sigma ** 2 for x in b])
+        player_count = len(a) + len(b)
+        denominator = max(trueskill.DELTA, sqrt(player_count * (trueskill.BETA ** 2) + sum_sigma).real)
+        return cdf(delta_mu / denominator)
 
     @staticmethod
     def _get_minimum_clout_team_skills(team_players_skills: Iterable['Skill']) -> List['Skill']:
@@ -222,13 +266,11 @@ class Skill:
 
     @staticmethod
     def from_division(normalised_value: int) -> 'Skill':
-        # TODO -- the following code seeds off of divs but it's way better to work out skill by games ...
-        # from core_classes.division import DIVISION_UNKNOWN_VAL
-        # if normalised_value != DIVISION_UNKNOWN_VAL and normalised_value < 9:
-        #     return Skill(rating=global_env().create_rating(mu=(9 - normalised_value) * trueskill.MU))
-        # else:
-        #     return Skill()
-        return Skill()
+        from core_classes.division import DIVISION_UNKNOWN_VAL
+        if normalised_value != DIVISION_UNKNOWN_VAL and normalised_value < 9:
+            return Skill(rating=global_env().create_rating(mu=(9 - normalised_value) * trueskill.MU * 0.5))
+        else:
+            return Skill()
 
 
 def _as_rating_groups(skills: Iterable[Skill]) -> tuple:
