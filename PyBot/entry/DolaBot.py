@@ -8,6 +8,7 @@ from discord.ext.commands import Bot, CommandNotFound, UserInputError, MissingRe
 
 from PyBot.cogs.bot_util_commands import BotUtilCommands
 from PyBot.cogs.meme_commands import MemeCommands
+from PyBot.cogs.sendou_commands import SendouCommands
 from PyBot.cogs.server_commands import ServerCommands
 from PyBot.cogs.slapp_commands import SlappCommands
 from PyBot.cogs.splatoon_commands import SplatoonCommands
@@ -32,6 +33,7 @@ class DolaBot(Bot):
         # Load Cogs
         self.try_add_cog(BotUtilCommands)
         self.try_add_cog(MemeCommands)
+        self.try_add_cog(SendouCommands)
         self.try_add_cog(ServerCommands)
         self.try_add_cog(SlappCommands)
         self.try_add_cog(SplatoonCommands)

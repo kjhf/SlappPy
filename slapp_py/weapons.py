@@ -1,4 +1,5 @@
 import random
+from typing import Optional
 
 WEAPONS = [
     ".52 Gal",
@@ -143,5 +144,83 @@ WEAPONS = [
 ]
 
 
+def transform_weapon(wep: str) -> str:
+    wep = wep.lower()
+    wep = wep.rstrip(" s")  # In case of "dualies" or tetras"
+    wep = wep.replace("splat ", "")
+    wep = wep.replace("classic ", "")
+    wep = wep.replace("replica ", "")
+    wep = wep.replace("kensa ", "k")
+    wep = wep.replace("custom ", "c")
+    wep = wep.replace("deco ", "d")
+    wep = wep.replace("nouveau ", "n")
+    wep = wep.replace("zink ", "z")
+    wep = wep.replace("-", "")
+    wep = wep.replace(".", "")
+    wep = wep.replace("'", "")
+    wep = wep.replace(" ", "")
+
+    # Special changes
+    wep = wep.replace("duel", "dual")
+    wep = wep.replace("nautilus", "naut")
+    wep = wep.replace("omatic", "")
+    wep = wep.replace("squelcher", "")
+    wep = wep.replace("squiffer", "squiff")
+    wep = wep.replace("nozzlenose", "")  # The Nozzles are usually known by their names
+    wep = wep.replace("splatling", "")  # The Splatlings are usually known by their names
+    wep = wep.replace("heavyremix", "remix")
+    wep = wep.replace("14mk", "")  # These are common to bamboos so boring
+    wep = wep.replace("tuber", "")  # These are common to goo tuber so boring
+    wep = wep.replace("splattershotpro", "pro")  # Known as pros
+    wep = wep.replace("splattershot", "shot")  # Known as shots
+    wep = wep.replace("splatterscope", "scope")  # Known as scopes
+    wep = wep.replace("sloshingmachine", "machine")  # Known as machines
+    wep = wep.replace("bloblobber", "blob")  # Known as blobs
+    wep = wep.replace("explosher", "explo")  # Usually shortened
+    wep = wep.replace("explosh", "explo")  # Usually shortened
+    wep = wep.replace("tenta", "tent")  # Usually shortened
+    wep = wep.replace("sodaslosher", "soda")  # Blasters are known by their names, ...
+    wep = wep.replace("rapidblaster", "rapid")  # but we can't remove blaster because that's a weapon
+    wep = wep.replace("lunablaster", "luna")
+    wep = wep.replace("rangeblaster", "range")
+    wep = wep.replace("dynamoroller", "dynamo")  # Rollers are known by their names, ...
+    wep = wep.replace("carbonroller", "carbon")  # but we can't remove roller because that's the splat weapon
+    wep = wep.replace("flingzaroller", "fling")
+    wep = wep.replace("flingroller", "fling")
+    wep = wep.replace("flingza", "fling")
+    wep = wep.replace("tetras", "tetra")  # tetras should be tetra dualies
+    return wep
+
+
+TRANSFORMED_WEAPONS = list(map(lambda w: transform_weapon(w), WEAPONS))
+
+
 def get_random_weapon() -> str:
     return random.choice(WEAPONS)
+
+
+def try_find_weapon(search: str, exact: bool = False) -> Optional[str]:
+    result = next((w for w in WEAPONS if w == search), None)
+    if result or exact:
+        return result
+    else:
+        # Search inexact
+        search = search.lower()
+
+        # Special exceptions
+        if search == "clappies":
+            return "Clear Dapple Dualies"
+        elif search == "zimi":
+            return "Zink Mini Splatling"
+        elif search == "kimi":
+            return "Kensa Mini Splatling"
+        elif search == "kunder":
+            return "Kensa Undercover Brella"
+        elif search == "tetras":
+            return "Dark Tetra Dualies"
+        else:
+            for i, t in enumerate(TRANSFORMED_WEAPONS):
+                if t == transform_weapon(search):
+                    return WEAPONS[i]
+
+        return None
