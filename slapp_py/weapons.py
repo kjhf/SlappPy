@@ -25,7 +25,7 @@ WEAPONS = {
     "Clash Blaster": ["clash", "vclash", "clashter"],
     "Clash Blaster Neo": ["clashneo", "clashterneo", "cbn"],
     "Classic Squiffer": ["csquif", "csquiff", "bluesquif", "bluesquiff", "squif", "squiff", "squiffer"],  # default squiffer
-    "Clear Dapple Dualies": ["cdapple", "cdapples", "cleardualies", "clappies", "cdd"],
+    "Clear Dapple Dualies": ["cdapple", "cdapples", "cleardualies", "clapples", "clappies", "cdd"],
     "Custom Blaster": ["cblaster"],
     "Custom Dualie Squelchers": ["cds", "customdualies", "cdualies"],
     "Custom E-Liter 4K": ["c4k", "ce4k", "celiter", "celitre", "celiter4k", "celitre4k", "custom4k" ],
