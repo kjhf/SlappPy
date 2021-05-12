@@ -2,6 +2,10 @@
 import asyncio
 import functools
 import json
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, Tuple
+from urllib.parse import quote
 
 import requests
 from discord.ext import commands
@@ -13,6 +17,7 @@ from slapp_py.weapons import try_find_weapon
 
 class SendouCommands(commands.Cog):
     """A grouping of commands around sendou.ink"""
+    sendou_cache: Dict[str, Tuple[datetime, str]] = dict()
 
     @commands.command(
         name='Builds',
@@ -27,6 +32,20 @@ class SendouCommands(commands.Cog):
             await ctx.send(f"I don't know what {weapon_to_get} is.")
             return
         # else
+        message = await self.get_or_fetch_weapon_build(resolved_weapon)
+        await ctx.send(message)
+
+    async def get_or_fetch_weapon_build(self, resolved_weapon) -> str:
+        cache_hit = self.sendou_cache.get(resolved_weapon, None)
+        if cache_hit:
+            logging.info(f"{resolved_weapon=} cache hit.")
+            cache_time = cache_hit[0]
+            if cache_time + timedelta(hours=6) > datetime.utcnow():
+                logging.info("... returning previous message.")
+                return cache_hit[1]
+            else:
+                logging.info(f"... but it's expired ({cache_time + timedelta(hours=6)=} > {datetime.utcnow()=} failed)")
+
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
@@ -38,7 +57,7 @@ class SendouCommands(commands.Cog):
 
         if response and response.text:
             result = json.loads(response.text)
-            message = f"**{resolved_weapon}**:\n"
+            message = f"**{resolved_weapon}**\n"
 
             nodes_read = 0
             for node in result:
@@ -57,12 +76,16 @@ class SendouCommands(commands.Cog):
 
                 message += "\n\n"
 
-            message += "\n" + "<https://sendou.ink/builds?weapon=" + resolved_weapon + ">"
+            message += "\n" + "<https://sendou.ink/builds?weapon=" + quote(resolved_weapon) + ">"
+            self.sendou_cache[resolved_weapon] = (datetime.utcnow(), message)
 
         else:
-            message = f"Bad response from Sendou.ink: {response=}"
-
-        await ctx.send(message)
+            # If the cache hit then use that rather than returning a not-useful error message.
+            if cache_hit:
+                return cache_hit[1]
+            else:
+                message = f"Bad response from Sendou.ink: {response=}"
+        return message
 
 
 def ability_to_emoji(ability: str) -> str:

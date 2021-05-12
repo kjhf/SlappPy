@@ -1,202 +1,166 @@
 import random
 from typing import Optional
 
-WEAPONS = [
-    ".52 Gal",
-    ".52 Gal Deco",
-    ".96 Gal",
-    ".96 Gal Deco",
-    "Aerospray MG",
-    "Aerospray PG",
-    "Aerospray RG",
-    "Ballpoint Splatling",
-    "Ballpoint Splatling Nouveau",
-    "Bamboozler 14 Mk I",
-    "Bamboozler 14 Mk II",
-    "Bamboozler 14 Mk III",
-    "Blaster",
-    "Bloblobber",
-    "Bloblobber Deco",
-    "Carbon Roller",
-    "Carbon Roller Deco",
-    "Cherry H-3 Nozzlenose",
-    "Clash Blaster",
-    "Clash Blaster Neo",
-    "Classic Squiffer",
-    "Clear Dapple Dualies",
-    "Custom Blaster",
-    "Custom Dualie Squelchers",
-    "Custom E-Liter 4K",
-    "Custom E-Liter 4K Scope",
-    "Custom Explosher",
-    "Custom Goo Tuber",
-    "Custom Hydra Splatling",
-    "Custom Jet Squelcher",
-    "Custom Range Blaster",
-    "Custom Splattershot Jr.",
-    "Dapple Dualies",
-    "Dapple Dualies Nouveau",
-    "Dark Tetra Dualies",
-    "Dualie Squelchers",
-    "Dynamo Roller",
-    "E-Liter 4K",
-    "E-Liter 4K Scope",
-    "Enberry Splat Dualies",
-    "Explosher",
-    "Firefin Splat Charger",
-    "Firefin Splatterscope",
-    "Flingza Roller",
-    "Foil Flingza Roller",
-    "Foil Squeezer",
-    "Forge Splattershot Pro",
-    "Fresh Squiffer",
-    "Glooga Dualies",
-    "Glooga Dualies Deco",
-    "Gold Dynamo Roller",
-    "Goo Tuber",
-    "Grim Range Blaster",
-    "H-3 Nozzlenose",
-    "H-3 Nozzlenose D",
-    "Heavy Splatling",
-    "Heavy Splatling Deco",
-    "Heavy Splatling Remix",
-    "Hero Blaster Replica",
-    "Hero Brella Replica",
-    "Hero Charger Replica",
-    "Hero Dualie Replicas",
-    "Hero Roller Replica",
-    "Hero Shot Replica",
-    "Hero Slosher Replica",
-    "Hero Splatling Replica",
-    "Herobrush Replica",
-    "Hydra Splatling",
-    "Inkbrush",
-    "Inkbrush Nouveau",
-    "Jet Squelcher",
-    "Kensa .52 Gal",
-    "Kensa Charger",
-    "Kensa Dynamo Roller",
-    "Kensa Glooga Dualies",
-    "Kensa L-3 Nozzlenose",
-    "Kensa Luna Blaster",
-    "Kensa Mini Splatling",
-    "Kensa Octobrush",
-    "Kensa Rapid Blaster",
-    "Kensa Sloshing Machine",
-    "Kensa Splat Dualies",
-    "Kensa Splat Roller",
-    "Kensa Splatterscope",
-    "Kensa Splattershot",
-    "Kensa Splattershot Jr.",
-    "Kensa Splattershot Pro",
-    "Kensa Undercover Brella",
-    "Krak-On Splat Roller",
-    "L-3 Nozzlenose",
-    "L-3 Nozzlenose D",
-    "Light Tetra Dualies",
-    "Luna Blaster",
-    "Luna Blaster Neo",
-    "Mini Splatling",
-    "N-Zap '83",
-    "N-Zap '85",
-    "N-Zap '89",
-    "Nautilus 47",
-    "Nautilus 79",
-    "Neo Splash-o-matic",
-    "Neo Sploosh-o-matic",
-    "New Squiffer",
-    "Octobrush",
-    "Octobrush Nouveau",
-    "Octo Shot Replica",
-    "Permanent Inkbrush",
-    "Range Blaster",
-    "Rapid Blaster", "Ink Mine",
-    "Rapid Blaster Deco",
-    "Rapid Blaster Pro",
-    "Rapid Blaster Pro Deco",
-    "Slosher",
-    "Slosher Deco",
-    "Sloshing Machine",
-    "Sloshing Machine Neo",
-    "Soda Slosher",
-    "Sorella Brella",
-    "Splash-o-matic",
-    "Splat Brella",
-    "Splat Charger",
-    "Splat Dualies",
-    "Splat Roller",
-    "Splatterscope",
-    "Splattershot",
-    "Splattershot Jr.",
-    "Splattershot Pro",
-    "Sploosh-o-matic",
-    "Sploosh-o-matic 7",
-    "Squeezer",
-    "Tenta Brella",
-    "Tenta Camo Brella",
-    "Tenta Sorella Brella",
-    "Tentatek Splattershot",
-    "Tri-Slosher",
-    "Tri-Slosher Nouveau",
-    "Undercover Brella",
-    "Undercover Sorella Brella",
-    "Zink Mini Splatling"
-]
+#: WEAPONS keyed by the actual name, values are "additional" names after spaces and punctuation ('-.) have been removed.
+#: e.g. ".52 Gal" already matches ".52gal" and "52gal".
+WEAPONS = {
+    ".52 Gal": ["gal", "52", "v52", "52g"],  # default gal
+    ".52 Gal Deco": ["galdeco", "52deco", "52galdeco", "52gd"],
+    ".96 Gal": ["96", "v96", "96g"],
+    ".96 Gal Deco": ["96deco", "96galdeco", "96gd"],
+    "Aerospray MG": ["mg", "aeromg", "silveraero", "silveraerospray", "aero", "aerospray"],  # default aero
+    "Aerospray PG": ["pg", "aeropg", "bronzeaero", "bronzeaerospray"],
+    "Aerospray RG": ["rg", "aerorg", "goldaero", "goldaerospray"],
+    "Ballpoint Splatling": ["ballpoint", "bp", "pen"],  # default ballpoint
+    "Ballpoint Splatling Nouveau": ["ballpointnouveau", "bpn", "bpsn", "bsn"],
+    "Bamboozler 14 Mk I": ["bambooi", "bamboo1", "bamboo14mki", "bamboomki", "bamboomk1"],
+    "Bamboozler 14 Mk II": ["bambooii", "bamboo2", "bamboo14mkii", "bamboomkii", "bamboomk2"],
+    "Bamboozler 14 Mk III": ["bambooiii", "bamboo3", "bamboo14mkiii", "bamboomkiii", "bamboomk3"],
+    "Blaster": ["vblaster"],
+    "Bloblobber": ["blob", "vblob"],
+    "Bloblobber Deco": ["blobdeco"],
+    "Carbon Roller": ["carbon", "vcarbon"],
+    "Carbon Roller Deco": ["carbondeco", "crd"],
+    "Cherry H-3 Nozzlenose": ["cherry", "ch3", "ch3n", "cherrynozzle"],
+    "Clash Blaster": ["clash", "vclash", "clashter"],
+    "Clash Blaster Neo": ["clashneo", "clashterneo", "cbn"],
+    "Classic Squiffer": ["csquif", "csquiff", "bluesquif", "bluesquiff", "squif", "squiff", "squiffer"],  # default squiffer
+    "Clear Dapple Dualies": ["cdapple", "cdapples", "cleardualies", "clappies", "cdd"],
+    "Custom Blaster": ["cblaster"],
+    "Custom Dualie Squelchers": ["cds", "customdualies", "cdualies"],
+    "Custom E-Liter 4K": ["c4k", "ce4k", "celiter", "celitre", "celiter4k", "celitre4k", "custom4k" ],
+    "Custom E-Liter 4K Scope": ["c4ks", "ce4ks", "celiterscope", "celitrescope", "celiter4kscope", "celitre4kscope", "custom4kscope" ],
+    "Custom Explosher": ["cex", "cexplo", "cexplosher" ],
+    "Custom Goo Tuber": ["customgoo", "cgoo", "cgootube", "cgootuber", "cgt"],
+    "Custom Hydra Splatling": ["customhyra", "chydra", "chydrasplatling", "chs"],
+    "Custom Jet Squelcher": ["customjet", "cjet", "cjets", "cjs", "cjsquelcher", "cjetsquelcher" ],
+    "Custom Range Blaster": ["customrange", "crange", "crblaster", "crb"],
+    "Custom Splattershot Jr.": ["customjunior", "cjr", "cjnr", "cjunior", "csj"],
+    "Dapple Dualies": ["dapples", "vdapples", "vdd", "dd", "ddualies"],
+    "Dapple Dualies Nouveau": ["dapplesnouveau", "ddn", "ddualiesn"],
+    "Dark Tetra Dualies": ["tetra", "tetras", "tetradualies", "dark", "darks", "darktetra", "darktetras", "darkdualies", "dtd"],  # default tetras
+    "Dualie Squelchers": ["ds", "vds"],
+    "Dynamo Roller": ["dynamo", "vdynamo", "silverdynamo"],
+    "E-Liter 4K": ["4k", "e4k", "eliter", "elitre", "eliter4k", "elitre4k" ],
+    "E-Liter 4K Scope": ["4ks", "e4ks", "eliterscope", "elitrescope", "eliter4kscope", "elitre4kscope"],
+    "Enperry Splat Dualies": ["edualies", "enperries", "enperrydualies", "esd"],
+    "Explosher": ["vex", "explo" ],
+    "Firefin Splat Charger": ["firefin", "firefincharger", "fsc"],
+    "Firefin Splatterscope": ["firefinscope" ],
+    "Flingza Roller": ["fling", "flingza", "vfling", "vflingza"],
+    "Foil Flingza Roller": ["foilfling", "foilflingza", "ffling", "fflingza", "ffr"],
+    "Foil Squeezer": ["fsqueezer"],
+    "Forge Splattershot Pro": ["forge", "forgepro", "fpro", "fsp"],
+    "Fresh Squiffer": ["fsquif", "fsquiff", "redsquif", "redsquiff"],
+    "Glooga Dualies": ["glooga", "gloogas", "glues", "vglues", "vgloogas", "gd", "vgd"],
+    "Glooga Dualies Deco": ["gloogadeco", "gloogasdeco", "gluesdeco", "dglues", "dgloogas", "gdd", "dgd"],
+    "Gold Dynamo Roller": ["golddynamo", "gdr"],
+    "Goo Tuber": ["goo", "vgoo", "gootube", "vgootube", "vgootuber" ],
+    "Grim Range Blaster": ["grim", "grange", "grblaster", "grb"],
+    "H-3 Nozzlenose": ["h3", "vh3", "h3nozzle", "h3n"],
+    "H-3 Nozzlenose D": ["h3d", "h3dnozzle", "h3nd", "h3dn"],
+    "Heavy Splatling": ["heavy", "vheavy"],
+    "Heavy Splatling Deco": ["heavyd", "heavydeco", "hsd"],
+    "Heavy Splatling Remix": ["remix", "heavyremix", "hsr"],
+    "Hero Blaster Replica": ["heroblaster"],
+    "Hero Brella Replica": ["herobrella"],
+    "Hero Charger Replica": ["herocharger"],
+    "Hero Dualie Replicas": ["herodualie", "herodualies"],
+    "Hero Roller Replica": ["heroroller"],
+    "Hero Shot Replica": ["heroshot"],
+    "Hero Slosher Replica": ["heroslosh", "heroslosher"],
+    "Hero Splatling Replica": ["herosplatling", "heroheavy"],
+    "Herobrush Replica": ["herobrush"],
+    "Hydra Splatling": ["hydra", "vhydra", "vhydrasplatling"],
+    "Inkbrush": ["brush", "vbrush", "vinkbrush"],  # default brush
+    "Inkbrush Nouveau": ["brushn", "brushnouveau", "nbrush", "inkbrushn"],
+    "Jet Squelcher": ["jet", "vjet", "jets", "vjets", "js", "vjs", "jsquelcher", "vjsquelcher", "vjetsquelcher" ],
+    "Kensa .52 Gal": ["kgal", "k52", "k52gal"],  # default kgal
+    "Kensa Charger": ["kcharger"],
+    "Kensa Dynamo Roller": ["kdynamo", "kensadynamo", "kdr"],
+    "Kensa Glooga Dualies": ["kensaglooga", "kensagloogas", "kensaglues", "klues", "kglues", "klooga", "kloogas", "kgloogas", "kgd"],
+    "Kensa L-3 Nozzlenose": ["knozzle", "kl3", "kl3n", "kl3nozzle"],
+    "Kensa Luna Blaster": ["kensaluna", "kluna", "kuna", "kunablaster", "klb"],
+    "Kensa Mini Splatling": ["kensamini", "kmini", "kimi", "kimisplatling", "kminisplatling", "kms"],
+    "Kensa Octobrush": ["kensabrush", "kbrush", "krush", "kocto", "koctobrush", "kob"],
+    "Kensa Rapid Blaster": ["kensarapid", "krapid", "krapidblaster", "kraster", "krb"],
+    "Kensa Sloshing Machine": ["kensasloshmachine", "ksloshmachine", "kensamachine", "kmachine", "kachine", "kachin", "ksm"],
+    "Kensa Splat Dualies": ["kensadualie", "kensadualies", "kdaulies", "kdaulie", "kaulies", "kaulie", "ksd"],
+    "Kensa Splat Roller": ["kensaroller", "kroller", "kroll", "ksr"],
+    "Kensa Splatterscope": ["kensascope", "ksscope", "kscope", "kss"],
+    "Kensa Splattershot": ["kensashot", "ksshot", "kshot"],
+    "Kensa Splattershot Jr.": ["kensajunior", "kjr", "kjnr", "kjunior", "ksj"],
+    "Kensa Splattershot Pro": ["kensapro", "kpro", "ksp"],
+    "Kensa Undercover Brella": ["kensaundercover", "kunder", "kensabrella", "kub"],
+    "Krak-On Splat Roller": ["krakon", "krakonroller", "krack", "krackonroller", "krak", "krakenroller", "koroller", "koro", "kosr"],
+    "L-3 Nozzlenose": ["l3", "vl3", "l3nozzle", "l3n"],
+    "L-3 Nozzlenose D": ["l3d", "l3dnozzle", "l3nd", "l3dn"],
+    "Light Tetra Dualies": ["light", "lights", "lightdualies", "lighttetra", "lighttetras"],
+    "Luna Blaster": ["luna", "vluna", "vuna", "vlunablaster"],
+    "Luna Blaster Neo": ["lunaneo", "lbn"],
+    "Mini Splatling": ["mini", "vmini", "vimi", "vimisplatling", "vminisplatling", "vms"],
+    "N-Zap '83": ["zap83", "83", "bronzenzap", "bronzezap", "brownnzap", "brownzap", "rednzap", "redzap"],  # By Twitter poll, this zap is the red one.
+    "N-Zap '85": ["zap85", "85", "greynzap", "greyzap", "graynzap", "grayzap", "zap", "nzap"],  # default zap
+    "N-Zap '89": ["zap89", "89", "orangenzap", "orangezap"],
+    "Nautilus 47": ["naut47", "47", "naut"],  # default nautilus
+    "Nautilus 79": ["naut79", "79"],
+    "Neo Splash-o-matic": ["neosplash", "nsplash", "nsplashomatic"],
+    "Neo Sploosh-o-matic": ["neosploosh", "nsploosh", "nsplooshomatic"],
+    "New Squiffer": ["nsquif", "nsquiff", "newsquif", "newsquiff"],
+    "Octobrush": ["obrush", "voctobrush", "vobrush"],
+    "Octobrush Nouveau": ["obrushn", "octobrushn"],
+    "Octo Shot Replica": ["oshot", "osr"],
+    "Permanent Inkbrush": ["pbrush", "permabrush", "permanentbrush", "pinkbrush", "permainkbrush"],
+    "Range Blaster": ["range", "vrange", "vrangeblaster"],
+    "Rapid Blaster": ["rapid", "vrapid", "vrapidblaster"],
+    "Rapid Blaster Deco": ["rapiddeco", "rapidd", "rapidblasterd", "rbd"],
+    "Rapid Blaster Pro": ["rapidpro", "prorapid", "rbp"],
+    "Rapid Blaster Pro Deco": ["rapidprodeco", "prodecorapid", "rbpd"],
+    "Slosher": ["slosh", "vslosh" ],
+    "Slosher Deco": ["sloshd", "sloshdeco" ],
+    "Sloshing Machine": ["sloshmachine", "vsloshmachine", "vmachine", "machine", "vachine", "vsm"],
+    "Sloshing Machine Neo": ["sloshmachineneo", "neosloshmachine", "neomachine", "machineneo", "smn"],
+    "Soda Slosher": ["soda", "sodaslosh" ],
+    "Sorella Brella": ["sorella", "sbrella", "srella" ],
+    "Splash-o-matic": ["splash", "vsplash", "vsplashomatic"],
+    "Splat Brella": ["brella", "vbrella", "vsplatbrella"],
+    "Splat Charger": ["charger", "vcharger", "vsplatcharger"],
+    "Splat Dualies": ["dualies", "vdualies", "vsplatdualies"],
+    "Splat Roller": ["roller", "vroller", "vsplatroller"],
+    "Splatterscope": ["scope", "vscope", "vsplatscope", "vsplatterscope"],
+    "Splattershot": ["shot", "vshot", "vsplatshot", "vsplattershot"],
+    "Splattershot Jr.": ["junior", "jr", "vjr", "jnr", "vjnr", "vjunior", "vsj"],
+    "Splattershot Pro": ["pro", "vpro", "vsplatshotpro", "vsplatterpro"],
+    "Sploosh-o-matic": ["sploosh", "vsploosh", "vsplooshomatic"],
+    "Sploosh-o-matic 7": ["7", "sploosh7", "7sploosh", "7splooshomatic"],
+    "Squeezer": ["vsqueezer"],
+    "Tenta Brella": ["tent", "vent", "vtent", "tentbrella", "vtentbrella"],
+    "Tenta Camo Brella": ["tentcamo", "camo", "camotent", "camobrella", "tentcamobrella", "tcb"],
+    "Tenta Sorella Brella": ["tentsorella", "tsorella", "sorellatent", "tsorellabrella", "tentsorellabrella", "tsb"],
+    "Tentatek Splattershot": ["ttek", "ttekshot", "tshot", "ttshot", "ttsplatshot", "ttsplattershot", "ttss"],
+    "Tri-Slosher": ["tri", "trislosh", "vtri", "vtrislosh", "vtrislosher"],
+    "Tri-Slosher Nouveau": ["trin", "trisloshn", "trinouveau", "trisloshnouveau", "tsn"],
+    "Undercover Brella": ["undercover", "ubrella", "vundercover", "vundercoverbrella"],
+    "Undercover Sorella Brella": ["sunder", "sundercover", "undercoversorella", "sundercoverbrella", "usb"],
+    "Zink Mini Splatling": ["zinkmini", "zmini", "zimi", "zimisplatling", "zminisplatling", "zms"],
+}
 
 
 def transform_weapon(wep: str) -> str:
-    wep = wep.lower()
-    wep = wep.rstrip(" s")  # In case of "dualies" or tetras"
-    wep = wep.replace("splat ", "")
-    wep = wep.replace("classic ", "")
-    wep = wep.replace("replica ", "")
-    wep = wep.replace("kensa ", "k")
-    wep = wep.replace("custom ", "c")
-    wep = wep.replace("deco ", "d")
-    wep = wep.replace("nouveau ", "n")
-    wep = wep.replace("zink ", "z")
-    wep = wep.replace("-", "")
-    wep = wep.replace(".", "")
-    wep = wep.replace("'", "")
-    wep = wep.replace(" ", "")
+    wep = wep.lower().strip(" .-'")
 
-    # Special changes
+    # Typo corrections
     wep = wep.replace("duel", "dual")
-    wep = wep.replace("nautilus", "naut")
-    wep = wep.replace("omatic", "")
-    wep = wep.replace("squelcher", "")
-    wep = wep.replace("squiffer", "squiff")
-    wep = wep.replace("nozzlenose", "")  # The Nozzles are usually known by their names
-    wep = wep.replace("splatling", "")  # The Splatlings are usually known by their names
-    wep = wep.replace("heavyremix", "remix")
-    wep = wep.replace("14mk", "")  # These are common to bamboos so boring
-    wep = wep.replace("tuber", "")  # These are common to goo tuber so boring
-    wep = wep.replace("splattershotpro", "pro")  # Known as pros
-    wep = wep.replace("splattershot", "shot")  # Known as shots
-    wep = wep.replace("splatterscope", "scope")  # Known as scopes
-    wep = wep.replace("sloshingmachine", "machine")  # Known as machines
-    wep = wep.replace("bloblobber", "blob")  # Known as blobs
-    wep = wep.replace("explosher", "explo")  # Usually shortened
-    wep = wep.replace("explosh", "explo")  # Usually shortened
-    wep = wep.replace("tenta", "tent")  # Usually shortened
-    wep = wep.replace("sodaslosher", "soda")  # Blasters are known by their names, ...
-    wep = wep.replace("rapidblaster", "rapid")  # but we can't remove blaster because that's a weapon
-    wep = wep.replace("lunablaster", "luna")
-    wep = wep.replace("rangeblaster", "range")
-    wep = wep.replace("dynamoroller", "dynamo")  # Rollers are known by their names, ...
-    wep = wep.replace("carbonroller", "carbon")  # but we can't remove roller because that's the splat weapon
-    wep = wep.replace("flingzaroller", "fling")
-    wep = wep.replace("flingroller", "fling")
-    wep = wep.replace("flingza", "fling")
-    wep = wep.replace("tetras", "tetra")  # tetras should be tetra dualies
     return wep
 
 
-TRANSFORMED_WEAPONS = list(map(lambda w: transform_weapon(w), WEAPONS))
+# Also add in the transformed names of the key.
+for w_key in WEAPONS.keys():
+    WEAPONS[w_key] = set([transform_weapon(w_key)] + WEAPONS[w_key])
 
 
 def get_random_weapon() -> str:
-    return random.choice(WEAPONS)
+    return random.choice(list(WEAPONS.keys()))
 
 
 def try_find_weapon(search: str, exact: bool = False) -> Optional[str]:
@@ -205,22 +169,10 @@ def try_find_weapon(search: str, exact: bool = False) -> Optional[str]:
         return result
     else:
         # Search inexact
-        search = search.lower()
+        search = transform_weapon(search)
 
-        # Special exceptions
-        if search == "clappies":
-            return "Clear Dapple Dualies"
-        elif search == "zimi":
-            return "Zink Mini Splatling"
-        elif search == "kimi":
-            return "Kensa Mini Splatling"
-        elif search == "kunder":
-            return "Kensa Undercover Brella"
-        elif search == "tetras":
-            return "Dark Tetra Dualies"
-        else:
-            for i, t in enumerate(TRANSFORMED_WEAPONS):
-                if t == transform_weapon(search):
-                    return WEAPONS[i]
+        for key in WEAPONS:
+            if any(wep_label == search for wep_label in WEAPONS[key]):
+                return key
 
         return None
