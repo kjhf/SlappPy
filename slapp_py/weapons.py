@@ -1,4 +1,5 @@
 import random
+import re
 from typing import Optional
 
 #: WEAPONS keyed by the actual name, values are "additional" names after spaces and punctuation ('-.) have been removed.
@@ -28,12 +29,12 @@ WEAPONS = {
     "Clear Dapple Dualies": ["cdapple", "cdapples", "cleardualies", "clapples", "clappies", "cdd"],
     "Custom Blaster": ["cblaster"],
     "Custom Dualie Squelchers": ["cds", "customdualies", "cdualies"],
-    "Custom E-Liter 4K": ["c4k", "ce4k", "celiter", "celitre", "celiter4k", "celitre4k", "custom4k" ],
-    "Custom E-Liter 4K Scope": ["c4ks", "ce4ks", "celiterscope", "celitrescope", "celiter4kscope", "celitre4kscope", "custom4kscope" ],
-    "Custom Explosher": ["cex", "cexplo", "cexplosher" ],
+    "Custom E-Liter 4K": ["c4k", "ce4k", "celiter", "celitre", "celiter4k", "celitre4k", "custom4k"],
+    "Custom E-Liter 4K Scope": ["c4ks", "ce4ks", "celiterscope", "celitrescope", "celiter4kscope", "celitre4kscope", "custom4kscope"],
+    "Custom Explosher": ["cex", "cexplo", "cexplosher"],
     "Custom Goo Tuber": ["customgoo", "cgoo", "cgootube", "cgootuber", "cgt"],
     "Custom Hydra Splatling": ["customhyra", "chydra", "chydrasplatling", "chs"],
-    "Custom Jet Squelcher": ["customjet", "cjet", "cjets", "cjs", "cjsquelcher", "cjetsquelcher" ],
+    "Custom Jet Squelcher": ["customjet", "cjet", "cjets", "cjs", "cjsquelcher", "cjetsquelcher"],
     "Custom Range Blaster": ["customrange", "crange", "crblaster", "crb"],
     "Custom Splattershot Jr.": ["customjunior", "cjr", "cjnr", "cjunior", "csj"],
     "Dapple Dualies": ["dapples", "vdapples", "vdd", "dd", "ddualies"],
@@ -41,12 +42,12 @@ WEAPONS = {
     "Dark Tetra Dualies": ["tetra", "tetras", "tetradualies", "dark", "darks", "darktetra", "darktetras", "darkdualies", "dtd"],  # default tetras
     "Dualie Squelchers": ["ds", "vds"],
     "Dynamo Roller": ["dynamo", "vdynamo", "silverdynamo"],
-    "E-Liter 4K": ["4k", "e4k", "eliter", "elitre", "eliter4k", "elitre4k" ],
+    "E-Liter 4K": ["4k", "e4k", "eliter", "elitre", "eliter4k", "elitre4k"],
     "E-Liter 4K Scope": ["4ks", "e4ks", "eliterscope", "elitrescope", "eliter4kscope", "elitre4kscope"],
     "Enperry Splat Dualies": ["edualies", "enperries", "enperrydualies", "esd"],
-    "Explosher": ["vex", "explo" ],
+    "Explosher": ["vex", "explo"],
     "Firefin Splat Charger": ["firefin", "firefincharger", "fsc"],
-    "Firefin Splatterscope": ["firefinscope" ],
+    "Firefin Splatterscope": ["firefinscope"],
     "Flingza Roller": ["fling", "flingza", "vfling", "vflingza"],
     "Foil Flingza Roller": ["foilfling", "foilflingza", "ffling", "fflingza", "ffr"],
     "Foil Squeezer": ["fsqueezer"],
@@ -55,7 +56,7 @@ WEAPONS = {
     "Glooga Dualies": ["glooga", "gloogas", "glues", "vglues", "vgloogas", "gd", "vgd"],
     "Glooga Dualies Deco": ["gloogadeco", "gloogasdeco", "gluesdeco", "dglues", "dgloogas", "gdd", "dgd"],
     "Gold Dynamo Roller": ["golddynamo", "gdr"],
-    "Goo Tuber": ["goo", "vgoo", "gootube", "vgootube", "vgootuber" ],
+    "Goo Tuber": ["goo", "vgoo", "gootube", "vgootube", "vgootuber"],
     "Grim Range Blaster": ["grim", "grange", "grblaster", "grb"],
     "H-3 Nozzlenose": ["h3", "vh3", "h3nozzle", "h3n"],
     "H-3 Nozzlenose D": ["h3d", "h3dnozzle", "h3nd", "h3dn"],
@@ -74,7 +75,7 @@ WEAPONS = {
     "Hydra Splatling": ["hydra", "vhydra", "vhydrasplatling"],
     "Inkbrush": ["brush", "vbrush", "vinkbrush"],  # default brush
     "Inkbrush Nouveau": ["brushn", "brushnouveau", "nbrush", "inkbrushn"],
-    "Jet Squelcher": ["jet", "vjet", "jets", "vjets", "js", "vjs", "jsquelcher", "vjsquelcher", "vjetsquelcher" ],
+    "Jet Squelcher": ["jet", "vjet", "jets", "vjets", "js", "vjs", "jsquelcher", "vjsquelcher", "vjetsquelcher"],
     "Kensa .52 Gal": ["kgal", "k52", "k52gal"],  # default kgal
     "Kensa Charger": ["kcharger"],
     "Kensa Dynamo Roller": ["kdynamo", "kensadynamo", "kdr"],
@@ -99,9 +100,9 @@ WEAPONS = {
     "Luna Blaster": ["luna", "vluna", "vuna", "vlunablaster"],
     "Luna Blaster Neo": ["lunaneo", "lbn"],
     "Mini Splatling": ["mini", "vmini", "vimi", "vimisplatling", "vminisplatling", "vms"],
-    "N-Zap '83": ["zap83", "83", "bronzenzap", "bronzezap", "brownnzap", "brownzap", "rednzap", "redzap"],  # By Twitter poll, this zap is the red one.
-    "N-Zap '85": ["zap85", "85", "greynzap", "greyzap", "graynzap", "grayzap", "zap", "nzap"],  # default zap
-    "N-Zap '89": ["zap89", "89", "orangenzap", "orangezap"],
+    "N-ZAP '83": ["zap83", "83", "bronzenzap", "bronzezap", "brownnzap", "brownzap", "rednzap", "redzap"],  # By Twitter poll, this zap is the red one.
+    "N-ZAP '85": ["zap85", "85", "greynzap", "greyzap", "graynzap", "grayzap", "zap", "nzap"],  # default zap
+    "N-ZAP '89": ["zap89", "89", "orangenzap", "orangezap"],
     "Nautilus 47": ["naut47", "47", "naut"],  # default nautilus
     "Nautilus 79": ["naut79", "79"],
     "Neo Splash-o-matic": ["neosplash", "nsplash", "nsplashomatic"],
@@ -116,12 +117,12 @@ WEAPONS = {
     "Rapid Blaster Deco": ["rapiddeco", "rapidd", "rapidblasterd", "rbd"],
     "Rapid Blaster Pro": ["rapidpro", "prorapid", "rbp"],
     "Rapid Blaster Pro Deco": ["rapidprodeco", "prodecorapid", "rbpd"],
-    "Slosher": ["slosh", "vslosh" ],
-    "Slosher Deco": ["sloshd", "sloshdeco" ],
+    "Slosher": ["slosh", "vslosh"],
+    "Slosher Deco": ["sloshd", "sloshdeco"],
     "Sloshing Machine": ["sloshmachine", "vsloshmachine", "vmachine", "machine", "vachine", "vsm"],
     "Sloshing Machine Neo": ["sloshmachineneo", "neosloshmachine", "neomachine", "machineneo", "smn"],
-    "Soda Slosher": ["soda", "sodaslosh" ],
-    "Sorella Brella": ["sorella", "sbrella", "srella" ],
+    "Soda Slosher": ["soda", "sodaslosh"],
+    "Sorella Brella": ["sorella", "sbrella", "srella"],
     "Splash-o-matic": ["splash", "vsplash", "vsplashomatic"],
     "Splat Brella": ["brella", "vbrella", "vsplatbrella"],
     "Splat Charger": ["charger", "vcharger", "vsplatcharger"],
@@ -147,10 +148,12 @@ WEAPONS = {
 
 
 def transform_weapon(wep: str) -> str:
-    wep = wep.lower().strip(" .-'")
+    # Lowercase and remove spaces and punctuation
+    wep = re.sub(r"[ .\-']", '', wep.lower())
 
     # Typo corrections
     wep = wep.replace("duel", "dual")
+    
     return wep
 
 

@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Tuple
-from urllib.parse import quote
+from urllib.parse import quote, quote_plus
 
 import requests
 from discord.ext import commands
@@ -76,7 +76,7 @@ class SendouCommands(commands.Cog):
 
                 message += "\n\n"
 
-            message += "\n" + "<https://sendou.ink/builds?weapon=" + quote(resolved_weapon) + ">"
+            message += "\n" + "<https://sendou.ink/builds?weapon=" + quote_plus(resolved_weapon) + ">"
             self.sendou_cache[resolved_weapon] = (datetime.utcnow(), message)
 
         else:
