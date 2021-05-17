@@ -5,13 +5,14 @@ import sys
 from os.path import join, relpath
 from typing import Set
 
+from caching.fileio import save_as_json_to_file, load_json_from_file, save_text_to_file  # battlefy-toolkit
+from downloaders.tourney_downloader import get_or_fetch_tourney_ids  # battlefy-toolkit
+
 from helpers.str_helper import equals_ignore_case, is_none_or_whitespace
-from misc import utils
-from misc.download_from_battlefy_result import get_or_fetch_tourney_ids, get_or_fetch_tourney_teams_file, \
+from misc.download_from_battlefy_result import get_or_fetch_tourney_teams_file, \
     update_sources_with_placements
 from misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR
 from misc.sources_to_skills import update_sources_with_skills
-from misc.utils import save_text_to_file
 from slapp_py.slapipes import initialise_slapp
 from tokens import SLAPP_APP_DATA
 
@@ -50,7 +51,7 @@ def _phase_1() -> Set[str]:
     for tourney_id in full_tourney_ids:
         get_or_fetch_tourney_teams_file(tourney_id)
 
-    utils.save_as_json_to_file("Phase 1 Ids.json", list(full_tourney_ids))
+    save_as_json_to_file("Phase 1 Ids.json", list(full_tourney_ids))
     return full_tourney_ids
 
 
@@ -83,7 +84,7 @@ def full_rebuild(skip_pauses: bool = False):
         full_tourney_ids = _phase_1()
         print("Phase 1 done.")
     else:
-        full_tourney_ids = utils.load_json_from_file("Phase 1 Ids.json")
+        full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
 
     # 2. Updates sources list
     # Current sources:

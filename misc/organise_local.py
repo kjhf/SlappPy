@@ -3,9 +3,9 @@ import os
 import sys
 from os.path import join, exists
 
+from caching.fileio import load_json_from_file  # battlefy-toolkit
 from dateutil.parser import isoparse
 
-from misc import utils
 from misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR, TOURNEY_INFO_SAVE_DIR, STAGES_SAVE_DIR
 from tokens import SLAPP_APP_DATA
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                 os.rename(file_path, destination_path)
                 continue
 
-        json_contents = utils.load_json_from_file(file_path)
+        json_contents = load_json_from_file(file_path)
 
         if json_contents and isinstance(json_contents, list):
             json_contents = json_contents[0]

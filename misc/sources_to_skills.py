@@ -3,12 +3,13 @@ from os.path import join
 from typing import List, Dict, Optional, Iterable
 from uuid import UUID
 
+from caching.fileio import save_as_json_to_file  # battlefy-toolkit
+
 from core_classes import division
 from core_classes.player import Player
 from core_classes.skill import Skill
 from core_classes.source import Source
 from core_classes.team import Team
-from misc import utils
 from misc.slapp_files_utils import load_latest_snapshot_players_file, \
     load_latest_snapshot_teams_file, enumerate_latest_snapshot_sources_file
 from tokens import SLAPP_APP_DATA
@@ -125,7 +126,7 @@ def update_sources_with_skills(
             print(f"Finished {source.name=} but no changes.")
 
     print("All done, saving the Players snapshot to: " + destination_players_path)
-    utils.save_as_json_to_file(destination_players_path, list(map(Player.to_dict, players_dict.values())))
+    save_as_json_to_file(destination_players_path, list(map(Player.to_dict, players_dict.values())))
 
 
 def seed_new_skill(player, teams: Dict[UUID, Team]) -> Skill:

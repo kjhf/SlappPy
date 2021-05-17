@@ -5,12 +5,11 @@ from os import makedirs
 from os.path import exists, isfile, join
 from typing import Optional
 
-import challonge  #pychal
+import challonge  # pychal
+from caching.fileio import save_as_json_to_file, load_json_from_file  # battlefy-toolkit
 
-from misc import utils
 from misc.slapp_files_utils import TOURNEY_INFO_SAVE_DIR, TOURNEY_TEAMS_SAVE_DIR, STAGES_SAVE_DIR
 from tokens import CHALLONGE_API_KEY, CHALLONGE_USERNAME
-from misc.utils import save_as_json_to_file
 
 
 def get_or_fetch_challonge_tourney_info_file_from_parts(
@@ -84,7 +83,7 @@ def get_or_fetch_challonge_tourney_info_file_combined(
                   f"{'started_at' in tourney_contents=}")
 
     else:
-        tourney_contents = utils.load_json_from_file(full_path)
+        tourney_contents = load_json_from_file(full_path)
 
         if isinstance(tourney_contents, list):
             tourney_contents = tourney_contents[0]

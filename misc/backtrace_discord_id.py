@@ -53,4 +53,3 @@ if __name__ == '__main__':
     print(result["username"] + '#' + result["discriminator"])
     print(result["avatar"])
     print(result["public_flags"])
-

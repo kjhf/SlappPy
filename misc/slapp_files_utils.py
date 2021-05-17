@@ -5,7 +5,9 @@ from typing import List, Optional, Generator
 from core_classes.player import Player
 from core_classes.source import Source
 from core_classes.team import Team
-from misc import utils
+
+from caching.fileio import load_json_from_file  # battlefy-toolkit
+
 from tokens import SLAPP_APP_DATA
 
 TOURNEY_INFO_SAVE_DIR = join(SLAPP_APP_DATA, "tourney_info")
@@ -41,7 +43,7 @@ def load_latest_snapshot_players_file() -> Optional[List[Player]]:
     file = get_latest_snapshot_players_file()
     if file:
         print('Loading players from ' + file)
-        loaded = utils.load_json_from_file(file)
+        loaded = load_json_from_file(file)
         return [Player.from_dict(d) for d in loaded]
     else:
         print('Players file not found.')
@@ -52,7 +54,7 @@ def load_latest_snapshot_teams_file() -> Optional[List[Team]]:
     file = get_latest_snapshot_teams_file()
     if file:
         print('Loading teams from ' + file)
-        loaded = utils.load_json_from_file(file)
+        loaded = load_json_from_file(file)
         return [Team.from_dict(d) for d in loaded]
     else:
         print('Teams file not found.')
@@ -75,7 +77,7 @@ def load_latest_snapshot_sources_file() -> Optional[List[Source]]:
     file = get_latest_snapshot_sources_file()
     if file:
         print('Loading sources from ' + file)
-        loaded = utils.load_json_from_file(file)
+        loaded = load_json_from_file(file)
         return [Source.from_dict(d) for d in loaded]
     else:
         print('Sources file not found.')
@@ -86,7 +88,7 @@ def enumerate_latest_snapshot_sources_file() -> Generator[Source, None, None]:
     file = get_latest_snapshot_sources_file()
     if file:
         print('Loading sources from ' + file)
-        loaded = utils.load_json_from_file(file)
+        loaded = load_json_from_file(file)
         for d in loaded:
             yield Source.from_dict(d)
     else:

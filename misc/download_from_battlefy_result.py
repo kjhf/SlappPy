@@ -10,6 +10,8 @@ from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists, join, isfile
 
+from utils.misc import assert_is_dict_recursive  # battlefy-toolkit
+
 from core_classes.bracket import Bracket
 from core_classes.game import Game
 from core_classes.player import Player
@@ -17,14 +19,14 @@ from core_classes.score import Score
 from core_classes.source import Source
 from core_classes.team import Team
 from helpers.dict_helper import add_set_by_key, first_key
+from helpers.fetch_helper import fetch_address
 from misc.slapp_files_utils import get_latest_snapshot_sources_file, \
     load_latest_snapshot_players_file, load_latest_snapshot_sources_file, TOURNEY_TEAMS_SAVE_DIR, STAGES_SAVE_DIR, \
     TOURNEY_INFO_SAVE_DIR
 from tokens import CLOUD_BACKEND, SLAPP_APP_DATA
-from misc import utils
-from misc.utils import fetch_address, save_as_json_to_file
-from vlee import battlefyToolkit
-from vlee.slate import ORG_SLUGS
+
+# From battlefy-toolkit
+from caching.fileio import save_as_json_to_file, load_json_from_file
 
 STAGE_STANDINGS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + "/stages/{stage_id}/latest-round-standings"
 
@@ -80,20 +82,6 @@ def download_from_battlefy(ids: Union[str, List[str]], force: bool = False) -> G
         yield get_or_fetch_tourney_teams_file(id_to_fetch, force=force)
 
 
-def get_or_fetch_tourney_ids(force: bool = False) -> Set[str]:
-    """Get a set of tourney ids from the Orgs that we watch. This will download the tourney info file."""
-
-    result = set()
-    for org in ORG_SLUGS:
-        tournaments = battlefyToolkit.tournament_ids(org)
-        if tournaments:
-            for t in tournaments:
-                tournament_info = get_or_fetch_tourney_info_file(t, force=force)
-                if tournament_info and tournament_info.get("gameName") == "Splatoon 2":
-                    result.add(t)
-    return result
-
-
 def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str, force: bool = False) -> Optional[dict]:
     if not exists(TOURNEY_INFO_SAVE_DIR):
         makedirs(TOURNEY_INFO_SAVE_DIR)
@@ -126,7 +114,7 @@ def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str, force: bool = False
 
         save_as_json_to_file(full_path, tourney_contents)
     else:
-        tourney_contents = utils.load_json_from_file(full_path)
+        tourney_contents = load_json_from_file(full_path)
 
     if isinstance(tourney_contents, list):
         tourney_contents = tourney_contents[0]
@@ -162,7 +150,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, fo
         save_as_json_to_file(_stage_path, _stage_contents)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
-        _stage_contents = utils.load_json_from_file(_stage_path)
+        _stage_contents = load_json_from_file(_stage_path)
 
     if isinstance(_stage_contents, list):
         _stage_contents = _stage_contents[0]
@@ -189,7 +177,7 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
         save_as_json_to_file(_stage_path, _stage_contents)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
-        _stage_contents = utils.load_json_from_file(_stage_path)
+        _stage_contents = load_json_from_file(_stage_path)
     return _stage_contents
 
 
@@ -233,7 +221,7 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str, force: bool = Fals
                 get_or_fetch_stage_file(tourney_id_to_fetch, stage_id, force=True)
 
     else:
-        teams_contents = utils.load_json_from_file(full_path)
+        teams_contents = load_json_from_file(full_path)
 
     return teams_contents
 
@@ -467,7 +455,7 @@ def add_tourney_placement_to_source(tourney_id: str,
     # Finish up
     # Save the snapshot file
     dict_to_save = source.to_dict()
-    utils.assert_is_dict_recursive(dict_to_save)
+    assert_is_dict_recursive(dict_to_save)
     return True
 
 
@@ -514,7 +502,7 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
             print(f"Finished {tourney_id=} but no changes.")
 
     print(f"All done, saving sources to: " + destination_sources_path)
-    utils.save_as_json_to_file(destination_sources_path, [source.to_dict() for source in sources])
+    save_as_json_to_file(destination_sources_path, [source.to_dict() for source in sources])
 
 
 def force_update_from_battlefy_slug(incoming_slug: str):

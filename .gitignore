@@ -5,6 +5,5 @@
 # Custom
 __pycache__/
 venv/
-Notes.md
 tokens.py
 *.bat

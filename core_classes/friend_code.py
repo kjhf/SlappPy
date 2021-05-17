@@ -63,4 +63,3 @@ NO_FRIEND_CODE = FriendCode(NO_FRIEND_CODE_SHORTS)
 if __name__ == '__main__':
     fc = FriendCode(input('Enter friend code.'))
     print(fc)
-    print(fc.is_valid_code())

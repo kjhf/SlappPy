@@ -3,13 +3,14 @@ from datetime import datetime
 from os import makedirs
 from os.path import exists
 
+import challonge
+from caching.fileio import save_as_json_to_file  # battlefy-toolkit
 from dateutil.parser import isoparse
 from smashggpy.models.Event import Event
 from smashggpy.util import Initializer
 from smashggpy.util.QueryQueueDaemon import QueryQueueDaemon
 
 from tokens import SMASH_GG_API_KEY
-from misc.utils import save_as_json_to_file
 
 if __name__ == '__main__':
     Initializer.initialize(SMASH_GG_API_KEY, 'info')

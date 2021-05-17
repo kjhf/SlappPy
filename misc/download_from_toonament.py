@@ -1,10 +1,9 @@
-import json
 from typing import List
 
 import requests
 from bs4 import BeautifulSoup
-
-from misc.utils import fetch_address, save_as_json_to_file
+from caching.fileio import save_as_json_to_file  # battlefy-toolkit
+from helpers.fetch_helper import fetch_address
 
 TOONAMENT_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s'
 TEAMS_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s/participants/'

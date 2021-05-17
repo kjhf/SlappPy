@@ -1,9 +1,11 @@
-import json
 from datetime import datetime
+
+from caching.fileio import save_as_json_to_file  # battlefy-toolkit
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists
-from misc.utils import fetch_address, save_as_json_to_file
+
+from helpers.fetch_helper import fetch_address
 
 STAT_INK_ADDRESS_FORMAT: str = 'https://stat.ink/api/v2/battle/%s?format=pretty'
 

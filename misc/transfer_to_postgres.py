@@ -2,8 +2,8 @@ import json
 from os.path import isfile
 
 import psycopg2
+from caching.fileio import load_json_from_file  # battlefy-toolkit
 
-from misc import utils
 from misc.create_tables import create_tables
 from tokens import *
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         if len(players_snapshot_path) > 0:
             assert isfile(players_snapshot_path)
             print('✔ Is a file.')
-            players_snapshot = utils.load_json_from_file(players_snapshot_path)
+            players_snapshot = load_json_from_file(players_snapshot_path)
 
             print(f'Processing {len(players_snapshot)} players.')
             for i, _ in enumerate(players_snapshot):
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         if len(teams_snapshot_path) > 0:
             assert isfile(teams_snapshot_path)
             print('✔ Is a file.')
-            teams_snapshot = utils.load_json_from_file(teams_snapshot_path)
+            teams_snapshot = load_json_from_file(teams_snapshot_path)
 
             print(f'Loaded {len(teams_snapshot)} teams.')
             for i, _ in enumerate(teams_snapshot):
