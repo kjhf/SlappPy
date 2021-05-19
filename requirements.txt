@@ -5,4 +5,4 @@ pychallonge~=1.11.1
 smashggpy~=0.0.29
 beautifulsoup4~=4.9.3
 psycopg2~=2.8.6
-battlefy-toolkit-Slate==1.0.0
+battlefy-toolkit-Slate
