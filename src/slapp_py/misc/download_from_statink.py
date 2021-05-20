@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import dotenv
 from battlefy_toolkit.caching.fileio import  save_as_json_to_file
 from dateutil.parser import isoparse
 from os import makedirs
@@ -10,6 +11,8 @@ from slapp_py.helpers.fetch_helper import fetch_address
 STAT_INK_ADDRESS_FORMAT: str = 'https://stat.ink/api/v2/battle/%s?format=pretty'
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
+
     # ids = [input("Id?")]
     ids = range(3200000, 3199890, -1)
 

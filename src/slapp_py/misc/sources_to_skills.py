@@ -3,6 +3,7 @@ from os.path import join
 from typing import List, Dict, Optional, Iterable
 from uuid import UUID
 
+import dotenv
 from battlefy_toolkit.caching.fileio import save_as_json_to_file
 
 from slapp_py.core_classes import division
@@ -12,7 +13,7 @@ from slapp_py.core_classes.source import Source
 from slapp_py.core_classes.team import Team
 from slapp_py.misc.slapp_files_utils import load_latest_snapshot_players_file, \
     load_latest_snapshot_teams_file, enumerate_latest_snapshot_sources_file
-from tokens import SLAPP_APP_DATA
+from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER
 
 
 def update_sources_with_skills(
@@ -44,7 +45,7 @@ def update_sources_with_skills(
 
     if not destination_players_path:
         destination_players_path = \
-            join(SLAPP_APP_DATA, f"Snapshot-Players-{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}.json")
+            join(SLAPP_DATA_FOLDER, f"Snapshot-Players-{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}.json")
 
     players_dict: Dict[UUID, Player] = {p.guid: p for p in players}
 
@@ -140,4 +141,5 @@ def seed_new_skill(player, teams: Dict[UUID, Team]) -> Skill:
 
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
     update_sources_with_skills(clear_current_skills=True)

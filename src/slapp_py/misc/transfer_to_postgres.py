@@ -1,22 +1,25 @@
 import json
+import os
 from os.path import isfile
 
+import dotenv
 import psycopg2
 from battlefy_toolkit.caching.fileio import load_json_from_file
 
 from slapp_py.misc.create_tables import create_tables
-from tokens import *
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
+
     connection = None
     cursor = None
 
     try:
         connection = psycopg2.connect(
-            host=HOST,
-            database=DATABASE,
-            user=USER,
-            password=PASSWORD)
+            host=os.getenv("DATABASE_HOST"),
+            database=os.getenv("DATABASE_NAME"),
+            user=os.getenv("DATABASE_USER"),
+            password=os.getenv("DATABASE_PASSWORD"))
 
         # Create a cursor
         cursor = connection.cursor()

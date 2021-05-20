@@ -1,8 +1,10 @@
 import json
+import os
 from datetime import datetime
 from os import makedirs
 from os.path import exists
 
+import dotenv
 from battlefy_toolkit.caching.fileio import save_as_json_to_file
 import challonge
 from dateutil.parser import isoparse
@@ -10,10 +12,10 @@ from smashggpy.models.Event import Event
 from smashggpy.util import Initializer
 from smashggpy.util.QueryQueueDaemon import QueryQueueDaemon
 
-from tokens import SMASH_GG_API_KEY
-
 if __name__ == '__main__':
-    Initializer.initialize(SMASH_GG_API_KEY, 'info')
+    dotenv.load_dotenv()
+
+    Initializer.initialize(os.getenv("SMASH_GG_API_KEY"), 'info')
     tournament = Event.get('tipped-off-12-presented-by-the-lab-gaming-center', 'melee-singles')
     sets = tournament.get_sets()
     for ggset in sets:

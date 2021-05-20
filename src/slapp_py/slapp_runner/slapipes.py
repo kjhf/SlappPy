@@ -16,6 +16,8 @@ MAX_RESULTS = 20
 slapp_write_queue: Queue[str] = Queue()
 slapp_loop = True
 
+SLAPP_DATA_FOLDER = os.getenv("SLAPP_DATA_FOLDER")
+
 
 async def _default_response_handler(success_message: str, response: dict) -> None:
     assert False, f"Slapp response handler not set. Discarding: {success_message=}, {response=}"
@@ -104,21 +106,14 @@ async def _run_slapp(slapp_path: str, mode: str):
 
 
 async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mode: str = "--keepOpen"):
-    import subprocess
     global response_function
 
     print("Initialising Slapp ...")
-    result = subprocess.run(['cd'], stdout=subprocess.PIPE, encoding='utf-8', shell=True)
-    slapp_path = result.stdout.strip(" \r\n")
-    print('cd: ' + slapp_path)
-    if 'SlapPy' in slapp_path:
-        slapp_path = slapp_path[0:slapp_path.index('SlapPy')]
-    slapp_path = os.path.join(slapp_path, 'SlapPy', 'venv', 'Slapp', 'SplatTagConsole.dll')
-    assert os.path.isfile(slapp_path), f'Not a file: {slapp_path}'
-
-    print(f"Using Slapp found at {slapp_path}")
+    slapp_console_path = os.getenv("SLAPP_CONSOLE_PATH")
+    assert os.path.isfile(slapp_console_path), f'{slapp_console_path=} not a file, expected .dll'
+    assert os.path.isdir(SLAPP_DATA_FOLDER), f'{SLAPP_DATA_FOLDER=} not a directory.'
     response_function = new_response_function
-    await _run_slapp(slapp_path, mode)
+    await _run_slapp(slapp_console_path, mode)
 
 
 async def query_slapp(query: str):

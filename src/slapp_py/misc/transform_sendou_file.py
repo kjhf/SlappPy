@@ -1,10 +1,15 @@
 import datetime
 import json
+import os
 from os.path import isfile
 
-from slapp_py.misc.backtrace_discord_id import backtrace_discord_id, clear_reset_time
+import dotenv
+from battlefy_toolkit.resolvers.DiscordIdResolver import DiscordIdResolver
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
+    resolver = DiscordIdResolver(os.getenv("BOT_TOKEN"))
+
     # The dump file is a partial download that contains a dump of responses bytes on each line, e.g.
     # b'{"id": "1122334455", "username": "MyUser", "avatar": "he57121", "discriminator": "1234", "public_flags": 0}'
     dump_path: str = input('Dump file? (Enter to skip)').replace('"', '')
@@ -38,12 +43,11 @@ if __name__ == '__main__':
                     del i["discord_id"]
                 else:
                     try:
-                        response = backtrace_discord_id(discord_id)
-                        i["discord"] = response
+                        response = resolver.resolve_discord_id(discord_id)
+                        i["discord"] = response.__dict__
                         del i["discord_id"]
                     except KeyboardInterrupt:
                         input("Interrupt received, enter to continue...")
-                        clear_reset_time()
         print("Done.")
         print(players_snapshot)
 

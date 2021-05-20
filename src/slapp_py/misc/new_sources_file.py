@@ -5,6 +5,7 @@ import sys
 from os.path import join, relpath
 from typing import Set
 
+import dotenv
 from battlefy_toolkit.caching.fileio import load_json_from_file, save_as_json_to_file, save_text_to_file
 from battlefy_toolkit.downloaders.tourney_downloader import get_or_fetch_tourney_ids
 
@@ -13,8 +14,7 @@ from slapp_py.misc.download_from_battlefy_result import get_or_fetch_tourney_tea
     update_sources_with_placements
 from slapp_py.misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR
 from slapp_py.misc.sources_to_skills import update_sources_with_skills
-from slapp_py.slapp_runner.slapipes import initialise_slapp
-from tokens import SLAPP_APP_DATA
+from slapp_py.slapp_runner.slapipes import initialise_slapp, SLAPP_DATA_FOLDER
 
 
 async def receive_slapp_response(success_message: str, response: dict):
@@ -64,7 +64,7 @@ def _phase_3(new_sources_file_path: str):
     )
 
 
-def _load_sources_file(path: str = join(SLAPP_APP_DATA, 'sources.yaml')):
+def _load_sources_file(path: str = join(SLAPP_DATA_FOLDER, 'sources.yaml')):
     with open(path, 'r', encoding='utf-8') as infile:
         return infile.read().split('\n')
 
@@ -102,7 +102,7 @@ def full_rebuild(skip_pauses: bool = False):
         else:
             matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
             if len(matched_tourney_teams_files) == 1:
-                relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_APP_DATA)
+                relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
                 if not relative_path.startswith('.'):
                     relative_path = '.\\' + relative_path
                 updated_tourney_paths.add(relative_path)
@@ -115,7 +115,7 @@ def full_rebuild(skip_pauses: bool = False):
                     print("Success!")
                     matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
                     if len(matched_tourney_teams_files) == 1:
-                        relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_APP_DATA)
+                        relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
                         updated_tourney_paths.add(relative_path)
                         updated_tourney_ids.add(tourney_id)
                     else:
@@ -172,7 +172,7 @@ def full_rebuild(skip_pauses: bool = False):
     # Remove blank lines
     sources_contents = list(filter(lambda x: not is_none_or_whitespace(x), sources_contents))
 
-    new_sources_file_path = join(SLAPP_APP_DATA, 'sources_new.yaml')
+    new_sources_file_path = join(SLAPP_DATA_FOLDER, 'sources_new.yaml')
     save_text_to_file(path=new_sources_file_path,
                       content='\n'.join(sources_contents))
 
@@ -203,6 +203,7 @@ def full_rebuild(skip_pauses: bool = False):
 
 
 if __name__ == '__main__':
-    _phase_3(join(SLAPP_APP_DATA, 'sources.yaml'))
+    dotenv.load_dotenv()
+    _phase_3(join(SLAPP_DATA_FOLDER, 'sources.yaml'))
     update_sources_with_placements()
     update_sources_with_skills(clear_current_skills=True)

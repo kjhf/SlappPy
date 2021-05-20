@@ -2,6 +2,8 @@ import hashlib
 import re
 from typing import List, Union
 
+import dotenv
+
 from slapp_py.helpers.dict_helper import from_list
 
 
@@ -61,5 +63,6 @@ NO_FRIEND_CODE = FriendCode(NO_FRIEND_CODE_SHORTS)
 
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
     fc = FriendCode(input('Enter friend code.'))
     print(fc)

@@ -1,11 +1,13 @@
 import glob
 import json
+import os
 import re
 import sys
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union, Set, Iterable, Generator, Collection
 from uuid import UUID
 
+import dotenv
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists, join, isfile
@@ -24,8 +26,9 @@ from slapp_py.helpers.fetch_helper import fetch_address
 from slapp_py.misc.slapp_files_utils import get_latest_snapshot_sources_file, \
     load_latest_snapshot_players_file, load_latest_snapshot_sources_file, TOURNEY_TEAMS_SAVE_DIR, STAGES_SAVE_DIR, \
     TOURNEY_INFO_SAVE_DIR
-from tokens import CLOUD_BACKEND, SLAPP_APP_DATA
+from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER
 
+CLOUD_BACKEND = os.getenv("CLOUD_BACKEND")
 
 STAGE_STANDINGS_FETCH_ADDRESS_FORMAT: str = CLOUD_BACKEND + "/stages/{stage_id}/latest-round-standings"
 
@@ -482,7 +485,7 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
 
     if not destination_sources_path:
         destination_sources_path = \
-            join(SLAPP_APP_DATA, f"Snapshot-Sources-{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}.json")
+            join(SLAPP_DATA_FOLDER, f"Snapshot-Sources-{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}.json")
 
     # Filter ids that are less than 20 characters or more than 30 (id is probably not correct) --
     # expected 24 chars, and hex numbers only.
@@ -529,10 +532,12 @@ def force_update_from_battlefy_slug(incoming_slug: str):
 
 
 # if __name__ == '__main__':
+#     dotenv.load_dotenv()
 #     force_update_from_battlefy_slug()
 #     sys.exit(0)
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
     # Ask for the tournament to update
     global_ids = \
         [

@@ -3,11 +3,12 @@ import os
 import sys
 from os.path import join, exists
 
+import dotenv
 from battlefy_toolkit.caching.fileio import load_json_from_file
 from dateutil.parser import isoparse
 
 from slapp_py.misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR, TOURNEY_INFO_SAVE_DIR, STAGES_SAVE_DIR
-from tokens import SLAPP_APP_DATA
+from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER
 
 
 def conditional_move(_src, _dest) -> bool:
@@ -19,6 +20,8 @@ def conditional_move(_src, _dest) -> bool:
 
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
+
     # For each file in local, sort into the correct folder.
     work_dir = input('Work directory?')
     if not os.path.isdir(work_dir):
@@ -42,7 +45,7 @@ if __name__ == '__main__':
             continue
 
         if file.startswith("Snapshot-"):
-            destination_path = join(SLAPP_APP_DATA, file)
+            destination_path = join(SLAPP_DATA_FOLDER, file)
             if file_path != destination_path:
                 os.rename(file_path, destination_path)
                 continue

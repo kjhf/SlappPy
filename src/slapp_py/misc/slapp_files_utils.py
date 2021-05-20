@@ -7,19 +7,19 @@ from battlefy_toolkit.caching.fileio import load_json_from_file
 from slapp_py.core_classes.player import Player
 from slapp_py.core_classes.source import Source
 from slapp_py.core_classes.team import Team
-from tokens import SLAPP_APP_DATA
+from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER
 
-TOURNEY_INFO_SAVE_DIR = join(SLAPP_APP_DATA, "tourney_info")
-TOURNEY_TEAMS_SAVE_DIR = join(SLAPP_APP_DATA, "tourney_teams")
+TOURNEY_INFO_SAVE_DIR = join(SLAPP_DATA_FOLDER, "tourney_info")
+TOURNEY_TEAMS_SAVE_DIR = join(SLAPP_DATA_FOLDER, "tourney_teams")
 STAGES_SAVE_DIR = join(TOURNEY_INFO_SAVE_DIR, "stages")
 
 
 def get_all_snapshot_players_files() -> List[str]:
-    return glob.glob(join(SLAPP_APP_DATA, f'Snapshot-Players-*.json'))
+    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Players-*.json'))
 
 
 def get_all_snapshot_teams_files() -> List[str]:
-    return glob.glob(join(SLAPP_APP_DATA, f'Snapshot-Teams-*.json'))
+    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Teams-*.json'))
 
 
 def get_latest_snapshot_players_file() -> Optional[str]:
@@ -61,7 +61,7 @@ def load_latest_snapshot_teams_file() -> Optional[List[Team]]:
 
 
 def get_all_snapshot_sources_files() -> List[str]:
-    return glob.glob(join(SLAPP_APP_DATA, f'Snapshot-Sources-*.json'))
+    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Sources-*.json'))
 
 
 def get_latest_snapshot_sources_file() -> Optional[str]:

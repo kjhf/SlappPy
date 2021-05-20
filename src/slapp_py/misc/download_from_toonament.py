@@ -1,5 +1,6 @@
 from typing import List
 
+import dotenv
 import requests
 from bs4 import BeautifulSoup
 from battlefy_toolkit.caching.fileio import save_as_json_to_file
@@ -13,6 +14,8 @@ TEAMS_ADDRESS_FORMAT: str = 'https://www.toornament.com/en_GB/tournaments/%s/par
 # Teams (participants): view-source:https://www.toornament.com/en_GB/tournaments/3539133076478918656/participants/
 
 if __name__ == '__main__':
+    dotenv.load_dotenv()
+
     id_to_fetch = input('id?')
     address = TOONAMENT_ADDRESS_FORMAT % id_to_fetch
     print(f'Getting tourney from {address}')

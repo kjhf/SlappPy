@@ -1,15 +1,16 @@
 import glob
 import json
+import os
 from datetime import datetime
 from os import makedirs
 from os.path import exists, isfile, join
 from typing import Optional
 
 import challonge  # pychal
+import dotenv
 
 from battlefy_toolkit.caching.fileio import load_json_from_file, save_as_json_to_file
 from slapp_py.misc.slapp_files_utils import TOURNEY_INFO_SAVE_DIR, TOURNEY_TEAMS_SAVE_DIR, STAGES_SAVE_DIR
-from tokens import CHALLONGE_API_KEY, CHALLONGE_USERNAME
 
 
 def get_or_fetch_challonge_tourney_info_file_from_parts(
@@ -91,7 +92,8 @@ def get_or_fetch_challonge_tourney_info_file_combined(
 
 
 if __name__ == '__main__':
-    challonge.set_credentials(CHALLONGE_USERNAME, CHALLONGE_API_KEY)
+    dotenv.load_dotenv()
+    challonge.set_credentials(os.getenv("CHALLONGE_USERNAME"), os.getenv("CHALLONGE_API_KEY"))
 
     for global_id_to_fetch in [input('id/url? NOTE FOR SUBDOMAINS YOU MUST PREPEND THE SUBDOMAIN TO THE ID e.g. paddling-abc123')]:
         get_or_fetch_challonge_tourney_info_file_combined(global_id_to_fetch)
