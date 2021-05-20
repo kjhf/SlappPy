@@ -1,9 +1,9 @@
-requests~=2.23.0
-psycopg2~=2.8.6
-discord~=1.0.1
-python-dateutil~=2.8.1
-beautifulsoup4~=4.9.3
-Pillow
-smashggpy~=0.0.29
-pychal  # Challonge
+requests~=2.25.1
 trueskill~=0.4.5
+python-dateutil~=2.8.1
+pychallonge~=1.11.1
+smashggpy~=0.0.29
+beautifulsoup4~=4.9.3
+psycopg2~=2.8.6
+battlefy-toolkit-Slate
+python-dotenv
