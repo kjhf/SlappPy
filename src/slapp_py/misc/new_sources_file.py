@@ -82,13 +82,14 @@ def full_rebuild(skip_pauses: bool = False):
     do_fetch_tourney_ids = ask("Fetch new tourney ids? [Y/N]")
     if do_fetch_tourney_ids:
         full_tourney_ids = _phase_1()
-        print("Phase 1 done.")
+        print(f"Phase 1 done, {len(full_tourney_ids)} ids saved.")
     else:
         full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
 
     # 2. Updates sources list
     # Current sources:
     sources_contents = _load_sources_file()
+    print(f"{len(sources_contents)} sources loaded from current sources yaml (diff of {len(full_tourney_ids) - len(sources_contents)}).")
 
     # Sources now that we've pulled in the tourney files:
     updated_tourney_ids = set()
@@ -126,6 +127,7 @@ def full_rebuild(skip_pauses: bool = False):
                           f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
 
     # Now update the yaml
+    print(f"Updating the yaml ({len(sources_contents)} sources).")
     # Take care of those pesky exceptions to the rule
 
     # Sendou goes first (but only if not dated)
@@ -154,9 +156,11 @@ def full_rebuild(skip_pauses: bool = False):
         sources_contents.append(updated_path)
 
     # Replace backslashes with forwards
+    print(f"Fixing backslashes... ({len(sources_contents)} sources).")
     sources_contents = [line.replace('\\', '/') for line in sources_contents]
 
     # Sort by order.
+    print(f"Sorting... ({len(sources_contents)} sources).")
     sources_contents.sort()
 
     # Add the exceptions back in to the correct places
@@ -170,13 +174,15 @@ def full_rebuild(skip_pauses: bool = False):
         sources_contents.append(twitter_str)
 
     # Remove blank lines
-    sources_contents = list(filter(lambda x: not is_none_or_whitespace(x), sources_contents))
+    print(f"Removing blanks... ({len(sources_contents)} sources).")
+    sources_contents = [line for line in sources_contents if not is_none_or_whitespace(line)]
 
+    print(f"Writing to sources_new.yaml... ({len(sources_contents)} sources).")
     new_sources_file_path = join(SLAPP_DATA_FOLDER, 'sources_new.yaml')
     save_text_to_file(path=new_sources_file_path,
                       content='\n'.join(sources_contents))
 
-    print(f"Phase 2 done. {updated_tourney_ids=}")
+    print(f"Phase 2 done. {len(sources_contents)} sources written with {len(updated_tourney_ids)} updated ids: {updated_tourney_ids=} ")
 
     # 3. Rebuild
     # if yes, call --rebuild [path]
@@ -204,6 +210,7 @@ def full_rebuild(skip_pauses: bool = False):
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
-    _phase_3(join(SLAPP_DATA_FOLDER, 'sources.yaml'))
-    update_sources_with_placements()
-    update_sources_with_skills(clear_current_skills=True)
+    # _phase_3(join(SLAPP_DATA_FOLDER, 'sources.yaml'))
+    # update_sources_with_placements()
+    # update_sources_with_skills(clear_current_skills=True)
+    full_rebuild(True)

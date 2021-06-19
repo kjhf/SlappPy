@@ -12,9 +12,14 @@ import traceback
 from asyncio import Queue
 from typing import Callable, Any, Awaitable, Set
 
+import dotenv
+
 MAX_RESULTS = 20
 slapp_write_queue: Queue[str] = Queue()
 slapp_loop = True
+
+if not os.getenv("SLAPP_DATA_FOLDER"):
+    dotenv.load_dotenv()
 
 SLAPP_DATA_FOLDER = os.getenv("SLAPP_DATA_FOLDER")
 

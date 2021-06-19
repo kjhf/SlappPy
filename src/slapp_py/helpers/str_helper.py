@@ -68,7 +68,7 @@ def is_none_or_whitespace(value: Optional[str]) -> bool:
         return True
 
     for i in range(0, len(value)):
-        if value[i].isspace():
+        if not value[i].isspace():
             return False
     return True
 
