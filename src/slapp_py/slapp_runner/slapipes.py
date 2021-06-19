@@ -37,10 +37,13 @@ async def _read_stdout(stdout):
             if not response:
                 print('stdout: (none response)')
                 await asyncio.sleep(1)
-            elif response.startswith(b"eyJNZXNzYWdlIjoiT"):  # This is the b64 start of a Slapp message.
+            elif response.startswith(b"eyJNZXNzYWdlIjo"):  # This is the b64 start of a Slapp message.
                 decoded_bytes = base64.b64decode(response)
                 response = json.loads(str(decoded_bytes, "utf-8"))
                 await response_function(response.get("Message", "Response does not contain Message."), response)
+            elif b"Caching task done." in response:
+                print('stdout: ' + response.decode('utf-8'))
+                await response_function("Caching task done.", {})
             else:
                 print('stdout: ' + response.decode('utf-8'))
         except Exception as e:
@@ -144,6 +147,18 @@ async def query_slapp(query: str):
     query = query.strip()
     if n:
         options.add("--queryIsRegex")
+
+    insensitive_query_is_clantag = re.compile(re.escape('--queryisclantag'), re.IGNORECASE)
+    (query, n) = insensitive_query_is_clantag.subn('', query)
+    query = query.strip()
+    if n:
+        options.add("--queryIsClanTag")
+
+    insensitive_clantag = re.compile(re.escape('--clantag'), re.IGNORECASE)
+    (query, n) = insensitive_clantag.subn('', query)
+    query = query.strip()
+    if n:
+        options.add("--queryIsClanTag")
 
     print(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
     await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' +
