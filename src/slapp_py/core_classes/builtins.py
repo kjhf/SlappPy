@@ -21,3 +21,4 @@ UnknownTeamName: Name = Name(UNKNOWN_TEAM, BuiltinSource.guid)
 """The Name for an unknown team."""
 
 NoTeam = Team(names=[Name("(Free Agent)", BuiltinSource.guid)], sources=[BuiltinSource.guid])
+UnknownTeam = Team(names=[UnknownTeamName], sources=[BuiltinSource.guid])

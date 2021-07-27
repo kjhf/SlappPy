@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union
 from uuid import UUID, uuid4
 
 from slapp_py.core_classes import division
@@ -68,6 +68,8 @@ class Team:
                     self.names.append(Name(names[i], sources[0]))
                 elif isinstance(names[i], Name):
                     self.names.append(names[i])
+                else:
+                    print(f"team: Can't handle {names[i]} -- expected Name or str. Ignoring.")
 
         self.twitter_profiles = twitter_profiles or []
         if isinstance(guid, str):
@@ -147,43 +149,14 @@ class Team:
             result["Twitter"] = to_list(lambda x: Twitter.to_dict(x), self.twitter_profiles)
         return result
 
-    @staticmethod
-    def best_team_player_div_string(
-            team: 'Team',
-            players_for_team: List[Dict[str, Union[dict, object, bool]]],
-            known_teams: Dict[str, 'Team']):
-        if not players_for_team or not known_teams:
-            return ''
-
-        from slapp_py.core_classes.player import Player
-        highest_div: Division = team.current_div
-        best_player: Optional[Player] = None
-        for player_tuple in players_for_team:
-            if player_tuple:
-                in_team = player_tuple["Item2"] if "Item2" in player_tuple else False
-                p: Union[dict, Player] = player_tuple["Item1"] if "Item1" in player_tuple else None
-                if p is None:
-                    continue
-                elif isinstance(p, dict):
-                    p: Player = Player.from_dict(p)
-                elif isinstance(p, Player):
-                    pass
-                else:
-                    assert False, f"Unknown Player object {p}"
-
-                if in_team and len(p.teams) > 0:
-                    for team_id in p.teams:
-                        player_team = known_teams[team_id.__str__()] if known_teams and team_id in known_teams else None
-                        if (player_team is not None) \
-                                and (not player_team.current_div.is_unknown) \
-                                and (highest_div.is_unknown or (player_team.current_div < highest_div)):
-                            highest_div = player_team.current_div
-                            best_player = p
-
-        if highest_div.is_unknown or team.current_div.is_unknown or best_player is None:
-            return ''
-        elif highest_div == team.current_div:
-            return 'No higher div players.'
+    def get_best_div(self, last_n_divisions: int = 3) -> Division:
+        """The team's best division in the last n divisions"""
+        if self.current_div.is_unknown:
+            return self.current_div
         else:
-            name: str = best_player.name.value
-            return f"Highest div player is ``{name}`` at {highest_div.__str__()}."
+            best_div = division.Unknown
+            last_n_divisions = min(last_n_divisions, len(self.divisions))  # Can only be up to the size.
+            for div in self.divisions[:last_n_divisions]:
+                if div < best_div:
+                    best_div = div
+            return best_div
