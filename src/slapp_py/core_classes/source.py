@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Union, List, Optional
 from uuid import UUID, uuid4
@@ -62,7 +63,7 @@ class Source:
                 start=Source.cs_ticks_to_datetime(obj["Start"]) if "Start" in obj else UNKNOWN_DATE_TIME,
             )
         except Exception as e:
-            print(f"Exception occurred loading Source with id {obj.get('Id', '(Unknown)')}: {e}, {e.args}")
+            logging.exception(exc_info=e, msg=f"Exception occurred loading Source with id {obj.get('Id', '(Unknown)')}: {e}, {e.args}")
             raise e
 
     def to_dict(self) -> dict:

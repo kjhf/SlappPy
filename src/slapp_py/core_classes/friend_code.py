@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 from typing import List, Union
 
@@ -54,7 +55,7 @@ class FriendCode:
         sha1.update(principal.to_bytes(4, byteorder='little'))
         calc_sum = sha1.digest()[0] >> 1
 
-        print(self.__str__(), fc_int, principal, checksum, calc_sum)
+        logging.info(self.__str__(), fc_int, principal, checksum, calc_sum)
         return checksum == calc_sum
 
 

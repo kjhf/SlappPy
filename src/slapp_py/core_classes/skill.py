@@ -1,4 +1,5 @@
 import json
+import logging
 from cmath import sqrt
 from typing import Optional, Iterable, List, Tuple, Collection
 
@@ -9,7 +10,7 @@ from trueskill.backends import cdf
 SCALAR = 60  # Brings the clout to 3000 range.
 
 # Setup the TrueSkill environment.
-print("Initialising TrueSkill ...")
+logging.info("skill.py: Initialising TrueSkill ...")
 trueskill.setup()
 
 

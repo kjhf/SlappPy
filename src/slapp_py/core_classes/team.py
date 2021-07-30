@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Union
 from uuid import UUID, uuid4
 
@@ -69,7 +70,7 @@ class Team:
                 elif isinstance(names[i], Name):
                     self.names.append(names[i])
                 else:
-                    print(f"team: Can't handle {names[i]} -- expected Name or str. Ignoring.")
+                    logging.error(f"team: Can't handle {names[i]} -- expected Name or str. Ignoring.")
 
         self.twitter_profiles = twitter_profiles or []
         if isinstance(guid, str):
