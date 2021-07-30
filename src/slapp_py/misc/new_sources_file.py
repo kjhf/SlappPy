@@ -3,7 +3,7 @@ import glob
 import json
 import sys
 from os.path import join, relpath
-from typing import Set
+from typing import Set, Dict, Tuple, Collection
 
 import dotenv
 from battlefy_toolkit.caching.fileio import load_json_from_file, save_as_json_to_file, save_text_to_file
@@ -45,14 +45,126 @@ def pause(exit_if_no: bool = False):
 
 
 def _phase_1() -> Set[str]:
-    print("Getting tourney ids...")
+    print("Fetching tourney ids...")
     full_tourney_ids = get_or_fetch_tourney_ids()
 
+    print(f"Getting tourneys from the ids ({len(full_tourney_ids)} to get)")
     for tourney_id in full_tourney_ids:
         get_or_fetch_tourney_teams_file(tourney_id)
 
+    print("Saving...")
     save_as_json_to_file("Phase 1 Ids.json", list(full_tourney_ids))
     return full_tourney_ids
+
+
+def _phase_2(battlefy_ids: Collection) -> str:
+    # Current sources:
+    sources_contents = _load_sources_file()
+    print(f"{len(sources_contents)} sources loaded from current sources yaml. {len(battlefy_ids)} Battlefy Ids known. (Diff of {len(battlefy_ids) - len(sources_contents)}).")
+
+    # Sources now that we've pulled in the tourney files:
+    # Dictionary keyed by ids with values of path,
+    # and if the source is new since the current source (true) or was present in the last sources file (false)
+    processed_tourney_ids: Dict[str, Tuple[str, bool]] = {}
+    for tourney_id in battlefy_ids:
+        # Search the sources yaml
+        filename = tourney_id + ".json"
+        found_line = next((line for line in sources_contents if line.endswith(filename)), None)
+
+        if found_line:
+            # Not new
+            processed_tourney_ids[tourney_id] = (found_line, False)
+        else:
+            # New
+            matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
+            if len(matched_tourney_teams_files) == 1:
+                relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
+                if not relative_path.startswith('.'):
+                    relative_path = '.\\' + relative_path
+                processed_tourney_ids[tourney_id] = (relative_path, True)
+            else:
+                print(f"ERROR: Found an updated tourney file but a unique file wasn't downloaded for it: "
+                      f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+                print("Re-attempting download...")
+                if get_or_fetch_tourney_teams_file(tourney_id):
+                    print("Success!")
+                    matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
+                    if len(matched_tourney_teams_files) == 1:
+                        relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
+                        processed_tourney_ids[tourney_id] = (relative_path, True)
+                    else:
+                        print(f"ERROR: Reattempt failed. Please debug."
+                              f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+                else:
+                    print(f"ERROR: Reattempt failed. Skipping file."
+                          f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+
+    # Now update the yaml
+    print(f"Updating the yaml ({len(sources_contents)} sources).")
+    # Take care of those pesky exceptions to the rule
+
+    # Sendou goes first (but only if not dated)
+    # If dated, it's special and should be added back in
+    if 'Sendou.json' in sources_contents[0]:
+        sendou_str = sources_contents[0]
+        sources_contents.remove(sources_contents[0])
+    else:
+        sendou_str = None
+
+    # statink folder is special
+    if './statink' in sources_contents:
+        statink_present = True
+        sources_contents.remove('./statink')
+    else:
+        statink_present = False
+
+    # Twitter goes last (but only if not dated)
+    if 'Twitter.json' in sources_contents[-1]:
+        twitter_str = sources_contents[-1]
+        sources_contents.remove(sources_contents[-1])
+    else:
+        twitter_str = None
+
+    # Add in the new updates
+    for updated_id in processed_tourney_ids:
+        path, is_new = processed_tourney_ids[updated_id]
+        if is_new:
+            sources_contents.append(path)
+
+    # Replace backslashes with forwards
+    print(f"Fixing backslashes... ({len(sources_contents)} sources).")
+    sources_contents = [line.replace('\\', '/') for line in sources_contents]
+
+    # Distinct & sort.
+    print(f"Sorting and filtering... ({len(sources_contents)} sources).")
+    sources_contents = list(set(sources_contents))
+    sources_contents.sort()
+
+    # Add the exceptions back in to the correct places
+    # To the start (which will be second if undated Sendou is present)
+    if statink_present:
+        sources_contents.insert(0, './statink')
+
+    # To the start
+    if sendou_str:
+        sources_contents.insert(0, sendou_str)
+
+    # To the end
+    if twitter_str:
+        sources_contents.append(twitter_str)
+
+    # Remove blank lines
+    print(f"Removing blanks... ({len(sources_contents)} sources).")
+    sources_contents = [line for line in sources_contents if not is_none_or_whitespace(line)]
+
+    print(f"Writing to sources_new.yaml... ({len(sources_contents)} sources).")
+    new_sources_file_path = join(SLAPP_DATA_FOLDER, 'sources_new.yaml')
+    save_text_to_file(path=new_sources_file_path,
+                      content='\n'.join(sources_contents))
+
+    print(f"Phase 2 done. {len(sources_contents)} sources written with {len(processed_tourney_ids)} processed ids, "
+          f"of which {len(list(filter(lambda t_id: processed_tourney_ids[t_id][1], processed_tourney_ids)))} are new.")
+    return new_sources_file_path
 
 
 def _phase_3(new_sources_file_path: str):
@@ -87,102 +199,7 @@ def full_rebuild(skip_pauses: bool = False):
         full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
 
     # 2. Updates sources list
-    # Current sources:
-    sources_contents = _load_sources_file()
-    print(f"{len(sources_contents)} sources loaded from current sources yaml (diff of {len(full_tourney_ids) - len(sources_contents)}).")
-
-    # Sources now that we've pulled in the tourney files:
-    updated_tourney_ids = set()
-    updated_tourney_paths = set()
-    for tourney_id in full_tourney_ids:
-        # Search the sources yaml
-        filename = tourney_id + ".json"
-        if any([line.endswith(filename) for line in sources_contents]):
-            # Not new
-            pass
-        else:
-            matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
-            if len(matched_tourney_teams_files) == 1:
-                relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
-                if not relative_path.startswith('.'):
-                    relative_path = '.\\' + relative_path
-                updated_tourney_paths.add(relative_path)
-                updated_tourney_ids.add(tourney_id)
-            else:
-                print(f"ERROR: Found an updated tourney file but a unique file wasn't downloaded for it: "
-                      f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
-                print("Re-attempting download...")
-                if get_or_fetch_tourney_teams_file(tourney_id):
-                    print("Success!")
-                    matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
-                    if len(matched_tourney_teams_files) == 1:
-                        relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER)
-                        updated_tourney_paths.add(relative_path)
-                        updated_tourney_ids.add(tourney_id)
-                    else:
-                        print(f"ERROR: Reattempt failed. Please debug."
-                              f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
-                else:
-                    print(f"ERROR: Reattempt failed. Skipping file."
-                          f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
-
-    # Now update the yaml
-    print(f"Updating the yaml ({len(sources_contents)} sources).")
-    # Take care of those pesky exceptions to the rule
-
-    # Sendou goes first (but only if not dated)
-    if 'Sendou.json' in sources_contents[0]:
-        sendou_str = sources_contents[0]
-        sources_contents.remove(sources_contents[0])
-    else:
-        sendou_str = None
-
-    # statink folder is special
-    if './statink' in sources_contents:
-        statink_present = True
-        sources_contents.remove('./statink')
-    else:
-        statink_present = False
-
-    # Twitter goes last (but only if not dated)
-    if 'Twitter.json' in sources_contents[-1]:
-        twitter_str = sources_contents[-1]
-        sources_contents.remove(sources_contents[-1])
-    else:
-        twitter_str = None
-
-    # Add in the new updates
-    for updated_path in updated_tourney_paths:
-        sources_contents.append(updated_path)
-
-    # Replace backslashes with forwards
-    print(f"Fixing backslashes... ({len(sources_contents)} sources).")
-    sources_contents = [line.replace('\\', '/') for line in sources_contents]
-
-    # Sort by order.
-    print(f"Sorting... ({len(sources_contents)} sources).")
-    sources_contents.sort()
-
-    # Add the exceptions back in to the correct places
-    if sendou_str:
-        sources_contents.insert(0, sendou_str)
-
-    if statink_present:
-        sources_contents.insert(1, './statink')
-
-    if twitter_str:
-        sources_contents.append(twitter_str)
-
-    # Remove blank lines
-    print(f"Removing blanks... ({len(sources_contents)} sources).")
-    sources_contents = [line for line in sources_contents if not is_none_or_whitespace(line)]
-
-    print(f"Writing to sources_new.yaml... ({len(sources_contents)} sources).")
-    new_sources_file_path = join(SLAPP_DATA_FOLDER, 'sources_new.yaml')
-    save_text_to_file(path=new_sources_file_path,
-                      content='\n'.join(sources_contents))
-
-    print(f"Phase 2 done. {len(sources_contents)} sources written with {len(updated_tourney_ids)} updated ids: {updated_tourney_ids=} ")
+    new_sources_file_path = _phase_2(full_tourney_ids)
 
     # 3. Rebuild
     # if yes, call --rebuild [path]
