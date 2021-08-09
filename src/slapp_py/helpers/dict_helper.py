@@ -1,3 +1,4 @@
+import logging
 from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set, Optional, Type, Tuple
 from uuid import UUID
 
@@ -100,9 +101,9 @@ def deserialize_uuids(info: Mapping,
                         fn: Callable[[Any], UUID] = mapping[1]
                         uuids.append(fn(s))
                         continue
-                print(f"Could not convert s into UUID ({s=})")
+                logging.error(f"Could not convert s into UUID ({s=})")
         except ValueError as e:
-            print(f"ERROR in deserialize_uuids: {info=} with {key=}: {e}")
+            logging.error(f"ERROR in deserialize_uuids: {info=} with {key=}", exc_info=e)
     return uuids
 
 

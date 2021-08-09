@@ -158,6 +158,8 @@ class SlappResponseObject:
             # Take only the brackets useful to us
             # i.e. Alpha, Beta, Gamma, and previous Top Cuts.
             # Plus the bracket must have had placements in it (a winning team)
+            # We can't rely on placements that don't have one of these brackets as it may indicate that the
+            # team dropped rather than was unplaced, and so is not in accordance with skill
             brackets = [b for b in self.placements_for_players[p.guid.__str__()][source_id] if
                         (
                                 "Alpha" in b.name or

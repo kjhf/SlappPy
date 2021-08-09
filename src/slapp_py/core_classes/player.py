@@ -186,3 +186,58 @@ class Player:
         if len(self.weapons) > 0:
             result["Weapons"] = to_list(lambda x: str(x), self.weapons)
         return result
+
+    @staticmethod
+    def soft_merge_from_multiple(*players: 'Player'):
+        if not players:
+            return None
+
+        if len(players) == 1:
+            return players[0]
+
+        result = players[0]
+        for player in players[1:]:
+            result.teams.extend(player.teams)
+            result.teams = list(set(result.teams))
+
+            result.names.extend(player.names)
+            result.names = list(set(result.names))
+
+            result.sources.extend(player.sources)
+            result.sources = list(set(result.sources))
+
+            result.weapons.extend(player.weapons)
+            result.weapons = list(set(result.weapons))
+
+            result.battlefy.slugs.extend(player.battlefy.slugs)
+            result.battlefy.slugs = list(set(result.battlefy.slugs))
+
+            result.battlefy.usernames.extend(player.battlefy.usernames)
+            result.battlefy.usernames = list(set(result.battlefy.usernames))
+
+            result.battlefy.persistent_ids.extend(player.battlefy.persistent_ids)
+            result.battlefy.persistent_ids = list(set(result.battlefy.persistent_ids))
+
+            result.discord.ids.extend(player.discord.ids)
+            result.discord.ids = list(set(result.discord.ids))
+
+            result.discord.usernames.extend(player.discord.usernames)
+            result.discord.usernames = list(set(result.discord.usernames))
+
+            result.sendou_profiles.extend(player.sendou_profiles)
+            result.sendou_profiles = list(set(result.sendou_profiles))
+
+            result.twitch_profiles.extend(player.twitch_profiles)
+            result.twitch_profiles = list(set(result.twitch_profiles))
+
+            result.twitter_profiles.extend(player.twitter_profiles)
+            result.twitter_profiles = list(set(result.twitter_profiles))
+
+            result.friend_codes.extend(player.friend_codes)
+            result.friend_codes = list(set(result.friend_codes))
+
+            if player.country and result.country != player.country:
+                result.country = player.country
+
+            if player.top500:
+                result.top500 = True

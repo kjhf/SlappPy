@@ -6,6 +6,7 @@ The pipes to the Slapp.
 import asyncio
 import base64
 import json
+import logging
 import os
 import re
 import traceback
@@ -35,59 +36,59 @@ async def _read_stdout(stdout):
     global response_function
     global slapp_loop
 
-    print('_read_stdout')
+    logging.debug('_read_stdout')
     while slapp_loop:
         try:
             response = (await stdout.readline())
             if not response:
-                print('stdout: (none response)')
+                logging.info('stdout: (none response)')
                 await asyncio.sleep(1)
             elif response.startswith(b"eyJNZXNzYWdlIjo"):  # This is the b64 start of a Slapp message.
                 decoded_bytes = base64.b64decode(response)
                 response = json.loads(str(decoded_bytes, "utf-8"))
                 await response_function(response.get("Message", "Response does not contain Message."), response)
             elif b"Caching task done." in response:
-                print('stdout: ' + response.decode('utf-8'))
+                logging.debug('stdout: ' + response.decode('utf-8'))
                 await response_function("Caching task done.", {})
             else:
-                print('stdout: ' + response.decode('utf-8'))
+                logging.info('stdout: ' + response.decode('utf-8'))
         except Exception as e:
-            print(f'_read_stdout EXCEPTION: {e}\n{traceback.format_exc()}')
+            logging.error(msg=f'_read_stdout EXCEPTION {traceback.format_exc()}', exc_info=e)
 
 
 async def _read_stderr(stderr):
     global slapp_loop
 
-    print('_read_stderr')
+    logging.debug('_read_stderr')
     while slapp_loop:
         try:
             response: str = (await stderr.readline()).decode('utf-8')
             if not response:
-                print('stderr: none response, this indicates Slapp has exited.')
-                print('stderr: Terminating slapp_loop.')
+                logging.info('stderr: none response, this indicates Slapp has exited.')
+                logging.warning('stderr: Terminating slapp_loop.')
                 slapp_loop = False
                 break
             else:
-                print('stderr: ' + response)
+                logging.error('stderr: ' + response)
         except Exception as e:
-            print(f'_read_stderr EXCEPTION: {e}\n{traceback.format_exc()}')
+            logging.error(f'_read_stderr EXCEPTION: {traceback.format_exc()}', exc_info=e)
 
 
 async def _write_stdin(stdin):
     global slapp_loop
 
-    print('_write_stdin')
+    logging.debug('_write_stdin')
     while slapp_loop:
         try:
             while not slapp_write_queue.empty():
                 query = await slapp_write_queue.get()
-                print(f'_write_stdin: writing {query}')
+                logging.debug(f'_write_stdin: writing {query}')
                 stdin.write(f'{query}\n'.encode('utf-8'))
                 await stdin.drain()
                 await asyncio.sleep(0.1)
             await asyncio.sleep(1)
         except Exception as e:
-            print(f'_write_stdin EXCEPTION: {e}\n{traceback.format_exc()}')
+            logging.error(f'_write_stdin EXCEPTION: {traceback.format_exc()}', exc_info=e)
 
 
 async def _run_slapp(slapp_path: str, mode: str):
@@ -110,13 +111,13 @@ async def _run_slapp(slapp_path: str, mode: str):
         _read_stdout(proc.stdout),
         _write_stdin(proc.stdin)
     )
-    print("_run_slapp returned!")
+    logging.warning("_run_slapp returned!")
 
 
 async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mode: str = "--keepOpen"):
     global response_function
 
-    print("Initialising Slapp ...")
+    logging.info("Initialising Slapp ...")
     slapp_console_path = os.getenv("SLAPP_CONSOLE_PATH")
     assert os.path.isfile(slapp_console_path), f'{slapp_console_path=} not a file, expected .dll'
     assert os.path.isdir(SLAPP_DATA_FOLDER), f'{SLAPP_DATA_FOLDER=} not a directory.'
@@ -165,7 +166,7 @@ async def query_slapp(query: str):
     if n:
         options.add("--queryIsClanTag")
 
-    print(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
+    logging.debug(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
     await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' +
                                 ' '.join(options))
 
