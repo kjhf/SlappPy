@@ -1,6 +1,7 @@
 import asyncio
 import glob
 import json
+import logging
 import sys
 from os.path import join, relpath
 from typing import Set, Dict, Tuple, Collection
@@ -57,7 +58,7 @@ def _phase_1() -> Set[str]:
     return full_tourney_ids
 
 
-def _phase_2(battlefy_ids: Collection) -> str:
+def _phase_2(battlefy_ids: Collection) -> Tuple[str, str]:
     # Current sources:
     sources_contents = _load_sources_file()
     print(f"{len(sources_contents)} sources loaded from current sources yaml. {len(battlefy_ids)} Battlefy Ids known. (Diff of {len(battlefy_ids) - len(sources_contents)}).")
@@ -126,19 +127,24 @@ def _phase_2(battlefy_ids: Collection) -> str:
         twitter_str = None
 
     # Add in the new updates
+    patch_sources_contents = []
     for updated_id in processed_tourney_ids:
         path, is_new = processed_tourney_ids[updated_id]
         if is_new:
             sources_contents.append(path)
+            patch_sources_contents.append(path)
 
     # Replace backslashes with forwards
     print(f"Fixing backslashes... ({len(sources_contents)} sources).")
     sources_contents = [line.replace('\\', '/') for line in sources_contents]
+    patch_sources_contents = [line.replace('\\', '/') for line in patch_sources_contents]
 
     # Distinct & sort.
     print(f"Sorting and filtering... ({len(sources_contents)} sources).")
     sources_contents = list(set(sources_contents))
+    patch_sources_contents = list(set(patch_sources_contents))
     sources_contents.sort()
+    patch_sources_contents.sort()
 
     # Add the exceptions back in to the correct places
     # To the start (which will be second if undated Sendou is present)
@@ -162,16 +168,24 @@ def _phase_2(battlefy_ids: Collection) -> str:
     save_text_to_file(path=new_sources_file_path,
                       content='\n'.join(sources_contents))
 
+    print(f"Writing to sources_patch.yaml... ({len(patch_sources_contents)} sources).")
+    patch_sources_file_path = join(SLAPP_DATA_FOLDER, 'sources_patch.yaml')
+    save_text_to_file(path=patch_sources_file_path,
+                      content='\n'.join(patch_sources_contents))
+
     print(f"Phase 2 done. {len(sources_contents)} sources written with {len(processed_tourney_ids)} processed ids, "
-          f"of which {len(list(filter(lambda t_id: processed_tourney_ids[t_id][1], processed_tourney_ids)))} are new.")
-    return new_sources_file_path
+          f"of which {len(patch_sources_contents)} are new.")
+    return new_sources_file_path, patch_sources_file_path
 
 
-def _phase_3(new_sources_file_path: str):
+def _phase_3(new_sources_file_path: str, option: str):
     loop = asyncio.get_event_loop()
+    command = f"--{option} {new_sources_file_path}"
+    print("Calling " + command)
+
     loop.run_until_complete(
         asyncio.gather(
-            initialise_slapp(receive_slapp_response, "--rebuild " + new_sources_file_path)
+            initialise_slapp(receive_slapp_response, command)
         )
     )
 
@@ -183,11 +197,10 @@ def _load_sources_file(path: str = join(SLAPP_DATA_FOLDER, 'sources.yaml')):
 
 def full_rebuild(skip_pauses: bool = False):
     # Plan of attack:
-    # THIS IS A FULL REBUILD and we shouldn't have to do this every time.
     # 1. Get all the tourney ids
     # 2. Update the sources.yaml list
-    # 3. Rebuild the database  -- we could implement a partial update using what we have already
-    # 4. Add in placements     -- again, if we kep what's already there, we'd only be adding to new tourneys
+    # 3. Rebuild or patch the database
+    # 4. Add in placements     -- again, if we keep what's already there, we'd only be adding to new tourneys
     # 5. Calculate ELO         -- again, calculating only the new bits
 
     # 1. Tourney ids
@@ -199,16 +212,22 @@ def full_rebuild(skip_pauses: bool = False):
         full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
 
     # 2. Updates sources list
-    new_sources_file_path = _phase_2(full_tourney_ids)
+    new_sources_file_path, patch_sources_file_path = _phase_2(full_tourney_ids)
 
-    # 3. Rebuild
-    # if yes, call --rebuild [path]
-    do_rebuild = True
+    # 3. Rebuild or patch
+    option = "1"
     if not skip_pauses:
-        do_rebuild = ask("Is a rebuild needed?")
+        option = input(
+            "Select an option:\n"
+            "1. Patch current\n"
+            "2. Rebuild\n"
+            "(other). Skip\n")
 
-    if do_rebuild:
-        _phase_3(new_sources_file_path)
+    if option == "1":
+        _phase_3(patch_sources_file_path, "patch")
+
+    elif option == "2":
+        _phase_3(new_sources_file_path, "rebuild")
 
     print("Phase 3 done.")
     # 4. Add in the placements
@@ -227,7 +246,9 @@ def full_rebuild(skip_pauses: bool = False):
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
-    # _phase_3(join(SLAPP_DATA_FOLDER, 'sources.yaml'))
+    logging.basicConfig(level=logging.INFO)
+
+    # _phase_3(join(SLAPP_DATA_FOLDER, 'sources_patch.yaml'), "patch")
     # update_sources_with_placements()
     # update_sources_with_skills(clear_current_skills=True)
-    full_rebuild(True)
+    full_rebuild(False)

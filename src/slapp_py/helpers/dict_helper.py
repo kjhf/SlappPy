@@ -120,6 +120,6 @@ def add_set_by_key(dictionary: Dict[Any, set], key: Any, values: set):
     dictionary[key] = dictionary.get(key, set()) | values
 
 
-def first_key(dictionary: Mapping[T, U]) -> T:
+def first_key(dictionary: Mapping[T, U], default: Optional[T] = None) -> Optional[T]:
     """Get the first key of the dictionary. Completes in O(1)"""
-    return next(iter(dictionary))
+    return next(iter(dictionary), default)

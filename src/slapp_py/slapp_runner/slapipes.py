@@ -125,46 +125,27 @@ async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mo
     await _run_slapp(slapp_console_path, mode)
 
 
+def conditionally_add_option(options, query: str, reg_str: str, query_option_to_add: str) -> str:
+    reg = re.compile(re.escape(reg_str), re.IGNORECASE)
+    (query, n) = reg.subn('', query)
+    if n:
+        options.add(query_option_to_add)
+    return query.strip()
+
+
 async def query_slapp(query: str):
     """Query Slapp. The response comes back through the callback function that was passed in initialise_slapp."""
     options: Set[str] = set()
 
     # Handle options
-    insensitive_exact_case = re.compile(re.escape('--exactcase'), re.IGNORECASE)
-    (query, n) = insensitive_exact_case.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--exactCase")
-
-    insensitive_match_case = re.compile(re.escape('--matchcase'), re.IGNORECASE)
-    (query, n) = insensitive_match_case.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--exactCase")
-
-    insensitive_query_is_regex = re.compile(re.escape('--queryisregex'), re.IGNORECASE)
-    (query, n) = insensitive_query_is_regex.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--queryIsRegex")
-
-    insensitive_regex = re.compile(re.escape('--regex'), re.IGNORECASE)
-    (query, n) = insensitive_regex.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--queryIsRegex")
-
-    insensitive_query_is_clantag = re.compile(re.escape('--queryisclantag'), re.IGNORECASE)
-    (query, n) = insensitive_query_is_clantag.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--queryIsClanTag")
-
-    insensitive_clantag = re.compile(re.escape('--clantag'), re.IGNORECASE)
-    (query, n) = insensitive_clantag.subn('', query)
-    query = query.strip()
-    if n:
-        options.add("--queryIsClanTag")
+    query = conditionally_add_option(options, query, '--exactcase', '--exactCase')
+    query = conditionally_add_option(options, query, '--matchcase', '--exactCase')
+    query = conditionally_add_option(options, query, '--queryisregex', '--queryIsRegex')
+    query = conditionally_add_option(options, query, '--regex', '--queryIsRegex')
+    query = conditionally_add_option(options, query, '--queryisclantag', '--queryIsClanTag')
+    query = conditionally_add_option(options, query, '--clantag', '--queryIsClanTag')
+    query = conditionally_add_option(options, query, '--team', '--queryIsTeam')
+    query = conditionally_add_option(options, query, '--player', '--queryIsPlayer')
 
     logging.debug(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
     await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' +

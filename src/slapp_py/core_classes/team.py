@@ -8,7 +8,7 @@ from slapp_py.core_classes.division import Division
 from slapp_py.core_classes.name import Name
 from slapp_py.core_classes.socials.battlefy_team_social import BattlefyTeamSocial
 from slapp_py.core_classes.socials.twitter import Twitter
-from slapp_py.helpers.dict_helper import from_list, to_list, serialize_uuids
+from slapp_py.helpers.dict_helper import from_list, to_list
 
 
 class Team:
@@ -24,9 +24,6 @@ class Team:
     names: List[Name] = []
     """Back-store for the names of this team. The first element is the current name."""
 
-    sources: List[UUID] = []
-    """Back-store for the sources of this team."""
-
     twitter_profiles: List[Twitter] = []
     """Back-store for the Twitter Profiles of this team."""
 
@@ -38,24 +35,11 @@ class Team:
                  clan_tags: Optional[List[ClanTag]] = None,
                  divisions: Optional[List[Division]] = None,
                  names: Union[None, Name, List[Name], str, List[str]] = None,
-                 sources: Union[None, UUID, List[UUID]] = None,
                  twitter_profiles: Optional[List[Twitter]] = None,
                  guid: Union[None, str, UUID] = None):
         self.battlefy_persistent_team_ids = battlefy_persistent_team_ids or []
         self.clan_tags = clan_tags or []
         self.divisions = divisions or []
-
-        if not sources:
-            from slapp_py.core_classes.builtins import BuiltinSource
-            self.sources = [BuiltinSource.guid]
-        else:
-            if not isinstance(sources, list):
-                sources = [sources]
-
-            self.sources = []
-            for i in range(0, len(sources)):
-                assert isinstance(sources[i], UUID)
-                self.sources.append(sources[i])
 
         if not names:
             self.names = []
@@ -66,7 +50,7 @@ class Team:
             self.names = []
             for i in range(0, len(names)):
                 if isinstance(names[i], str):
-                    self.names.append(Name(names[i], sources[0]))
+                    self.names.append(Name(names[i], None))
                 elif isinstance(names[i], Name):
                     self.names.append(names[i])
                 else:
@@ -112,6 +96,21 @@ class Team:
         else:
             return ' ⬅ '.join([d.__str__() for d in self.divisions[:3]])
 
+    @property
+    def sources(self):
+        return \
+            list(
+                sorted(
+                    set(
+                        sum([x.sources for x in self.names]
+                            + [x.sources for x in self.battlefy_persistent_team_ids]
+                            + [x.sources for x in self.clan_tags]
+                            + [x.sources for x in self.twitter_profiles], [])
+                    ),
+                    reverse=True
+                )
+            )
+
     def __str__(self):
         return f'{(self.tag.value + " ") if self.tag else ""}' \
                f'{self.name}' \
@@ -120,14 +119,12 @@ class Team:
     @staticmethod
     def from_dict(obj: dict) -> 'Team':
         assert isinstance(obj, dict)
-        from slapp_py.core_classes.source import Source
         return Team(
             battlefy_persistent_team_ids=from_list(lambda x: BattlefyTeamSocial.from_dict(x),
                                                    obj.get("BattlefyPersistentTeamIds")),
             clan_tags=from_list(lambda x: ClanTag.from_dict(x), obj.get("ClanTags")),
             divisions=from_list(lambda x: Division.from_dict(x), obj.get("Divisions")),
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
-            sources=Source.deserialize_source_uuids(obj),
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),
             guid=UUID(obj.get("Id"))
         )
@@ -144,8 +141,6 @@ class Team:
         result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
             result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
-        if len(self.sources) > 0:
-            result["S"] = serialize_uuids(self.sources)
         if len(self.twitter_profiles) > 0:
             result["Twitter"] = to_list(lambda x: Twitter.to_dict(x), self.twitter_profiles)
         return result

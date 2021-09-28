@@ -37,9 +37,6 @@ class Player:
     sendou_profiles: List[Sendou]
     """Back-store for the Sendou Profiles of this player."""
 
-    sources: List[UUID]
-    """Back-store for the sources of this player."""
-
     teams: List[UUID]
     """Back-store for the team GUIDs for this player. The first element is the current team.
     No team represented by Team.NoTeam.Id."""
@@ -61,7 +58,6 @@ class Player:
 
     def __init__(self,
                  names: Union[None, Name, List[Name], str, List[str]] = None,
-                 sources: Union[None, UUID, List[UUID]] = None,
                  teams: Union[None, UUID, List[UUID]] = None,
                  battlefy: Optional[Battlefy] = None,
                  discord: Optional[Discord] = None,
@@ -75,22 +71,13 @@ class Player:
                  top500: bool = False,
                  guid: Union[None, str, UUID] = None):
 
-        if not sources:
-            from slapp_py.core_classes.builtins import BuiltinSource
-            self.sources = [BuiltinSource.guid]
-        else:
-            if not isinstance(sources, list):
-                sources = [sources]
-
-            self.sources = [(source if isinstance(source, UUID) else UUID(source.__str__())) for source in sources]
-
         if not isinstance(names, list):
             names = [names]
 
         self.names = []
         for i in range(0, len(names)):
             if isinstance(names[i], str):
-                self.names.append(Name(names[i], sources[0] if sources else None))
+                self.names.append(Name(names[i], None))
             elif isinstance(names[i], Name):
                 self.names.append(names[i])
 
@@ -135,10 +122,29 @@ class Player:
         return chr(ord(self.country[0]) + Player._COUNTRY_FLAG_OFFSET) + \
             chr(ord(self.country[1]) + Player._COUNTRY_FLAG_OFFSET)
 
+    @property
+    def sources(self):
+        return \
+            list(
+                sorted(
+                    set(
+                        sum([x.sources for x in self.names]
+                            + [x.sources for x in self.sendou_profiles]
+                            + [x.sources for x in self.twitch_profiles]
+                            + [x.sources for x in self.twitter_profiles]
+                            + [x.sources for x in self.battlefy.persistent_ids]
+                            + [x.sources for x in self.battlefy.slugs]
+                            + [x.sources for x in self.battlefy.usernames]
+                            + [x.sources for x in self.discord.ids]
+                            + [x.sources for x in self.discord.usernames], [])
+                    ),
+                    reverse=True
+                )
+            )
+
     @staticmethod
     def from_dict(obj: dict) -> 'Player':
         assert isinstance(obj, dict)
-        from slapp_py.core_classes.source import Source
         return Player(
             battlefy=Battlefy.from_dict(obj.get("Battlefy")) if "Battlefy" in obj else None,
             discord=Discord.from_dict(obj.get("Discord")) if "Discord" in obj else None,
@@ -146,7 +152,6 @@ class Player:
             names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
             sendou_profiles=from_list(lambda x: Sendou.from_dict(x), obj.get("Sendou")),
             skill=Skill.from_dict(obj.get("Skill")) if "Skill" in obj else Skill(),
-            sources=Source.deserialize_source_uuids(obj),
             teams=deserialize_uuids(obj, "Teams"),
             twitch_profiles=from_list(lambda x: Twitch.from_dict(x), obj.get("Twitch")),
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),
@@ -173,8 +178,6 @@ class Player:
             result["Sendou"] = to_list(lambda x: Sendou.to_dict(x), self.sendou_profiles)
         if not self.skill.is_default:
             result["Skill"] = self.skill.to_dict(),
-        if len(self.sources) > 0:
-            result["S"] = serialize_uuids(self.sources)
         if len(self.teams) > 0:
             result["Teams"] = serialize_uuids(self.teams)
         if self.top500:
@@ -202,9 +205,6 @@ class Player:
 
             result.names.extend(player.names)
             result.names = list(set(result.names))
-
-            result.sources.extend(player.sources)
-            result.sources = list(set(result.sources))
 
             result.weapons.extend(player.weapons)
             result.weapons = list(set(result.weapons))

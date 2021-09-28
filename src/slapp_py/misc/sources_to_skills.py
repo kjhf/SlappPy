@@ -56,7 +56,7 @@ def update_sources_with_skills(
         print(f'Working on {source.name}')
         for bracket in source.brackets:
             for match in bracket.matches:
-                if match.score.winning_team_index != -1:
+                if match.score.winning_team_index != -1 and match.ids:
                     match_dict = [
                         # [0] team 1
                         {
