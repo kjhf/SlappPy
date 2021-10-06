@@ -15,6 +15,8 @@ from typing import Callable, Any, Awaitable, Set
 
 import dotenv
 
+from slapp_py.core_classes.friend_code import FriendCode
+
 MAX_RESULTS = 20
 slapp_write_queue: Queue[str] = Queue()
 slapp_loop = True
@@ -125,11 +127,11 @@ async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mo
     await _run_slapp(slapp_console_path, mode)
 
 
-def conditionally_add_option(options, query: str, reg_str: str, query_option_to_add: str) -> str:
-    reg = re.compile(re.escape(reg_str), re.IGNORECASE)
+def conditionally_add_option(options, query: str, typed_option_no_delimit: str, query_option_to_add: str) -> str:
+    reg = re.compile(r"(--|–|—)" + typed_option_no_delimit, re.IGNORECASE)
     (query, n) = reg.subn('', query)
     if n:
-        options.add(query_option_to_add)
+        options.add("--" + query_option_to_add)
     return query.strip()
 
 
@@ -138,14 +140,25 @@ async def query_slapp(query: str):
     options: Set[str] = set()
 
     # Handle options
-    query = conditionally_add_option(options, query, '--exactcase', '--exactCase')
-    query = conditionally_add_option(options, query, '--matchcase', '--exactCase')
-    query = conditionally_add_option(options, query, '--queryisregex', '--queryIsRegex')
-    query = conditionally_add_option(options, query, '--regex', '--queryIsRegex')
-    query = conditionally_add_option(options, query, '--queryisclantag', '--queryIsClanTag')
-    query = conditionally_add_option(options, query, '--clantag', '--queryIsClanTag')
-    query = conditionally_add_option(options, query, '--team', '--queryIsTeam')
-    query = conditionally_add_option(options, query, '--player', '--queryIsPlayer')
+    query = conditionally_add_option(options, query, 'exactcase', 'exactCase')
+    query = conditionally_add_option(options, query, 'matchcase', 'exactCase')
+    query = conditionally_add_option(options, query, 'queryisregex', 'queryIsRegex')
+    query = conditionally_add_option(options, query, 'regex', 'queryIsRegex')
+    query = conditionally_add_option(options, query, 'queryisclantag', 'queryIsClanTag')
+    query = conditionally_add_option(options, query, 'clantag', 'queryIsClanTag')
+    query = conditionally_add_option(options, query, 'team', 'queryIsTeam')
+    query = conditionally_add_option(options, query, 'player', 'queryIsPlayer')
+
+    # If this is a friend code query
+    if query.upper().startswith("SW-"):
+        param = query[3:]
+        try:
+            _ = FriendCode(param)
+            query = param
+            options.add("--queryIsPlayer")
+            options.add("--exactCase")
+        except Exception as e:
+            logging.debug(f"Query started with SW- but was not a friend code: {e} ")
 
     logging.debug(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
     await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' +
