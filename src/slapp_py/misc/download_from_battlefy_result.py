@@ -114,7 +114,7 @@ def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str, force: bool = False
 
         print(f'OK! (Saved read tourney info file to {full_path})')
 
-        save_as_json_to_file(full_path, tourney_contents)
+        save_as_json_to_file(full_path, tourney_contents, indent=0)
     else:
         tourney_contents = load_json_from_file(full_path)
 
@@ -149,7 +149,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, fo
         _stage_dir = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__())
         if not exists(_stage_dir):
             makedirs(_stage_dir)
-        save_as_json_to_file(_stage_path, _stage_contents)
+        save_as_json_to_file(_stage_path, _stage_contents, indent=0)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
         _stage_contents = load_json_from_file(_stage_path)
@@ -176,7 +176,7 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
         _stage_dir = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__())
         if not exists(_stage_dir):
             makedirs(_stage_dir)
-        save_as_json_to_file(_stage_path, _stage_contents)
+        save_as_json_to_file(_stage_path, _stage_contents, indent=0)
         print(f'OK! (Saved read stage {_stage_path})')
     else:
         _stage_contents = load_json_from_file(_stage_path)
@@ -214,7 +214,7 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str, force: bool = Fals
         print(f'OK! (Saved read tourney to {full_path})')
 
         # else
-        save_as_json_to_file(full_path, teams_contents)
+        save_as_json_to_file(full_path, teams_contents, indent=0)
         print(f'OK! (Saved read tourney teams file to {full_path})')
 
         if force:
@@ -504,7 +504,7 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
             print(f"Finished {tourney_id=} but no changes.")
 
     print(f"All done, saving sources to: " + destination_sources_path)
-    save_as_json_to_file(destination_sources_path, [source.to_dict() for source in sources])
+    save_as_json_to_file(destination_sources_path, [source.to_dict() for source in sources], indent=0)
 
 
 def force_update_from_battlefy_slug(incoming_slug: str):

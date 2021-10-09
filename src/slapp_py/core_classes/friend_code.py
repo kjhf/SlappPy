@@ -11,12 +11,23 @@ from slapp_py.helpers.dict_helper import from_list
 class FriendCode:
     fc: List[int] = []
 
-    def __init__(self, param: Union[str, List[int]]):
+    def __init__(self, param: Union[str, List[int], int]):
         if not param:
             raise ValueError('FriendCode parameter must be specified.')
 
         if isinstance(param, str):
             param = [int(part) for part in re.match('^(\\d{4})-(\\d{4})-(\\d{4})$', param).group(1, 2, 3)]
+
+        if isinstance(param, int):
+            string = param.__str__()
+            if len(string) < 10 or len(string) > 12:
+                raise ValueError(f'The FriendCode in int form should be 9-12 digits long, '
+                                 f'actually {len(string)}.')
+            param = [
+                int(string[-12:-8]),
+                int(string[-8:-4]),
+                int(string[-4:])
+            ]
 
         if len(param) != 3:
             raise ValueError('FriendCode should be 3 ints.')

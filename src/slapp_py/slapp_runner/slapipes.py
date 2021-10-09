@@ -93,27 +93,28 @@ async def _write_stdin(stdin):
             logging.error(f'_write_stdin EXCEPTION: {traceback.format_exc()}', exc_info=e)
 
 
-async def _run_slapp(slapp_path: str, mode: str):
+async def _run_slapp(slapp_path: str, mode: str, restart_on_fail: bool = True):
     global slapp_loop
 
-    proc = await asyncio.create_subprocess_shell(
-        f'dotnet \"{slapp_path}\" \"%#%@%#%\" {mode}',
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        encoding=None,  # encoding must be None
-        errors=None,  # errors must be None
-        shell=True,
-        limit=100 * 1024 * 1024,  # 100 MiB
-    )
+    while restart_on_fail:
+        proc = await asyncio.create_subprocess_shell(
+            f'dotnet \"{slapp_path}\" \"%#%@%#%\" {mode}',
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            encoding=None,  # encoding must be None
+            errors=None,  # errors must be None
+            shell=True,
+            limit=100 * 1024 * 1024,  # 100 MiB
+        )
 
-    slapp_loop = True
-    await asyncio.gather(
-        _read_stderr(proc.stderr),
-        _read_stdout(proc.stdout),
-        _write_stdin(proc.stdin)
-    )
-    logging.warning("_run_slapp returned!")
+        slapp_loop = True
+        await asyncio.gather(
+            _read_stderr(proc.stderr),
+            _read_stdout(proc.stdout),
+            _write_stdin(proc.stdin)
+        )
+        logging.warning("_run_slapp returned!")
 
 
 async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mode: str = "--keepOpen"):
@@ -124,7 +125,7 @@ async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mo
     assert os.path.isfile(slapp_console_path), f'{slapp_console_path=} not a file, expected .dll'
     assert os.path.isdir(SLAPP_DATA_FOLDER), f'{SLAPP_DATA_FOLDER=} not a directory.'
     response_function = new_response_function
-    await _run_slapp(slapp_console_path, mode)
+    await _run_slapp(slapp_console_path, mode, restart_on_fail=(mode == "--keepOpen"))
 
 
 def conditionally_add_option(options, query: str, typed_option_no_delimit: str, query_option_to_add: str) -> str:

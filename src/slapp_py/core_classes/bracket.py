@@ -34,8 +34,9 @@ class Bracket:
         result = {"Name": self.name}
         if len(self.matches) > 0:
             result["Matches"] = to_list(lambda x: Game.to_dict(x), self.matches)
-        if len(self.placements.players_by_placement) > 0 or len(self.placements.teams_by_placement) > 0:
-            result["Placements"] = self.placements.to_dict()
+        placements_dict = self.placements.to_dict()
+        if len(placements_dict) > 0:
+            result["Placements"] = placements_dict
         return result
 
     @property

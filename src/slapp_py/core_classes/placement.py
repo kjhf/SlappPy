@@ -16,11 +16,15 @@ class Placement:
         """
         self.players_by_placement = dict()
         for rank in players_by_placement or []:
-            self.players_by_placement[int(rank)] = set(players_by_placement[rank])
+            to_add = set(players_by_placement[rank])
+            if len(to_add) > 0:
+                self.players_by_placement[int(rank)] = to_add
 
         self.teams_by_placement = dict()
         for rank in teams_by_placement or []:
-            self.teams_by_placement[int(rank)] = set(teams_by_placement[rank])
+            to_add = set(teams_by_placement[rank])
+            if len(to_add) > 0:
+                self.teams_by_placement[int(rank)] = to_add
 
     @staticmethod
     def from_dict(obj: dict) -> 'Placement':

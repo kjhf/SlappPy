@@ -127,7 +127,7 @@ def update_sources_with_skills(
             print(f"Finished {source.name=} but no changes.")
 
     print("All done, saving the Players snapshot to: " + destination_players_path)
-    save_as_json_to_file(destination_players_path, list(map(Player.to_dict, players_dict.values())))
+    save_as_json_to_file(destination_players_path, list(map(Player.to_dict, players_dict.values())), indent=0)
 
 
 def seed_new_skill(player, teams: Dict[UUID, Team]) -> Skill:
