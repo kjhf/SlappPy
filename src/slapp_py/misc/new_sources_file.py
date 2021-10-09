@@ -195,7 +195,7 @@ def _load_sources_file(path: str = join(SLAPP_DATA_FOLDER, 'sources.yaml')):
         return infile.read().split('\n')
 
 
-def full_rebuild(skip_pauses: bool = False):
+def full_rebuild(skip_pauses: bool = False, patch: bool = True):
     # Plan of attack:
     # 1. Get all the tourney ids
     # 2. Update the sources.yaml list
@@ -215,7 +215,7 @@ def full_rebuild(skip_pauses: bool = False):
     new_sources_file_path, patch_sources_file_path = _phase_2(full_tourney_ids)
 
     # 3. Rebuild or patch
-    option = "1"
+    option = "1" if patch else "2"
     if not skip_pauses:
         option = input(
             "Select an option:\n"
@@ -251,4 +251,4 @@ if __name__ == '__main__':
     # _phase_3(join(SLAPP_DATA_FOLDER, 'sources_patch.yaml'), "patch")
     # update_sources_with_placements()
     # update_sources_with_skills(clear_current_skills=True)
-    full_rebuild(False)
+    full_rebuild(skip_pauses=True, patch=False)

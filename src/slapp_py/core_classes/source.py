@@ -46,7 +46,7 @@ class Source:
         return self.name.rpartition('-')[2]
 
     @staticmethod
-    def deserialize_source_uuids(info: dict, key: str = "S") -> List[UUID]:
+    def deserialize_source_uuids(info: dict, key: Optional[str] = "S") -> List[UUID]:
         return deserialize_uuids(info, key, [(Source, lambda s: s.guid)])
 
     @staticmethod
