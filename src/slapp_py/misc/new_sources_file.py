@@ -246,9 +246,9 @@ def full_rebuild(skip_pauses: bool = False, patch: bool = True):
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # _phase_3(join(SLAPP_DATA_FOLDER, 'sources_patch.yaml'), "patch")
-    # update_sources_with_placements()
-    # update_sources_with_skills(clear_current_skills=True)
-    full_rebuild(skip_pauses=True, patch=False)
+    update_sources_with_placements()
+    update_sources_with_skills(clear_current_skills=True)
+    # full_rebuild(skip_pauses=True, patch=False)

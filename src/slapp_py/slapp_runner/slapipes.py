@@ -11,7 +11,7 @@ import os
 import re
 import traceback
 from asyncio import Queue
-from typing import Callable, Any, Awaitable, Set
+from typing import Callable, Any, Awaitable, Set, Optional
 
 import dotenv
 
@@ -96,7 +96,7 @@ async def _write_stdin(stdin):
 async def _run_slapp(slapp_path: str, mode: str, restart_on_fail: bool = True):
     global slapp_loop
 
-    while restart_on_fail:
+    while True:
         proc = await asyncio.create_subprocess_shell(
             f'dotnet \"{slapp_path}\" \"%#%@%#%\" {mode}',
             stdin=asyncio.subprocess.PIPE,
@@ -115,6 +115,8 @@ async def _run_slapp(slapp_path: str, mode: str, restart_on_fail: bool = True):
             _write_stdin(proc.stdin)
         )
         logging.warning("_run_slapp returned!")
+        if not restart_on_fail:
+            break
 
 
 async def initialise_slapp(new_response_function: Callable[[str, dict], Any], mode: str = "--keepOpen"):
@@ -136,7 +138,7 @@ def conditionally_add_option(options, query: str, typed_option_no_delimit: str, 
     return query.strip()
 
 
-async def query_slapp(query: str):
+async def query_slapp(query: str, limit: Optional[int] = 20):
     """Query Slapp. The response comes back through the callback function that was passed in initialise_slapp."""
     options: Set[str] = set()
 
@@ -160,6 +162,9 @@ async def query_slapp(query: str):
             options.add("--exactCase")
         except Exception as e:
             logging.debug(f"Query started with SW- but was not a friend code: {e} ")
+
+    if limit is not None:
+        options.add(f"--limit {limit}")
 
     logging.debug(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
     await slapp_write_queue.put('--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' +

@@ -148,8 +148,8 @@ class Player:
         return Player(
             battlefy=Battlefy.from_dict(obj.get("Battlefy")) if "Battlefy" in obj else None,
             discord=Discord.from_dict(obj.get("Discord")) if "Discord" in obj else None,
-            friend_codes=from_list(lambda x: FriendCode.from_dict(x), obj.get("FriendCode")),
-            names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
+            friend_codes=from_list(lambda x: FriendCode.from_dict(x), obj.get("FCs")),
+            names=from_list(lambda x: Name.from_dict(x), obj.get("N")),
             sendou_profiles=from_list(lambda x: Sendou.from_dict(x), obj.get("Sendou")),
             skill=Skill.from_dict(obj.get("Skill")) if "Skill" in obj else Skill(),
             teams=deserialize_uuids(obj, "Teams"),
@@ -170,10 +170,10 @@ class Player:
         if len(self.discord.ids) > 0 or len(self.discord.usernames) > 0:
             result["Discord"] = self.discord.to_dict()
         if len(self.friend_codes) > 0:
-            result["FriendCode"] = to_list(lambda x: FriendCode.to_dict(x), self.friend_codes)
+            result["FCs"] = to_list(lambda x: FriendCode.to_dict(x), self.friend_codes)
         result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
-            result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
+            result["N"] = to_list(lambda x: Name.to_dict(x), self.names)
         if len(self.sendou_profiles) > 0:
             result["Sendou"] = to_list(lambda x: Sendou.to_dict(x), self.sendou_profiles)
         if not self.skill.is_default:

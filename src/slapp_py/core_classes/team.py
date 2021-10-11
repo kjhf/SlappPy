@@ -124,7 +124,7 @@ class Team:
                                                    obj.get("BattlefyPersistentTeamIds")),
             clan_tags=from_list(lambda x: ClanTag.from_dict(x), obj.get("ClanTags")),
             divisions=from_list(lambda x: Division.from_dict(x), obj.get("Divisions")),
-            names=from_list(lambda x: Name.from_dict(x), obj.get("Names")),
+            names=from_list(lambda x: Name.from_dict(x), obj.get("N")),
             twitter_profiles=from_list(lambda x: Twitter.from_dict(x), obj.get("Twitter")),
             guid=UUID(obj.get("Id"))
         )
@@ -140,7 +140,7 @@ class Team:
             result["Divisions"] = to_list(lambda x: Division.to_dict(x), self.divisions)
         result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
-            result["Names"] = to_list(lambda x: Name.to_dict(x), self.names)
+            result["N"] = to_list(lambda x: Name.to_dict(x), self.names)
         if len(self.twitter_profiles) > 0:
             result["Twitter"] = to_list(lambda x: Twitter.to_dict(x), self.twitter_profiles)
         return result

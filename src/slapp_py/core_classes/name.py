@@ -32,14 +32,16 @@ class Name:
     def from_dict(obj: dict) -> 'Name':  # Python note: 'Name' in '' to forward-declare the type as we're in the class.
         assert isinstance(obj, dict)
         from slapp_py.core_classes.source import Source
-        for key in obj:
-            return Name(
-                value=key,
-                sources=Source.deserialize_source_uuids(obj[key], key=None)
-            )
+        return Name(
+            value=obj.get("N", ""),
+            sources=Source.deserialize_source_uuids(obj)
+        )
 
     def to_dict(self) -> dict:
-        return {self.value: serialize_uuids(self.sources)}
+        result: dict = {'N': self.value}
+        if len(self.sources) > 0:
+            result["S"] = serialize_uuids(self.sources)
+        return result
 
     def __str__(self):
         return self.value
