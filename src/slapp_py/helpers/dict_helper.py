@@ -32,7 +32,7 @@ def from_list(f: Callable[[Any], T], x: Union[None, Iterable[T], T]) -> List[T]:
     return [f(y) for y in x]
 
 
-def to_list(f: Callable[[T], Union[dict, str]], x: Union[None, Iterable[T], T]) -> List[Union[dict, str]]:
+def to_list(f: Callable[[T], Union[dict, list, str]], x: Union[None, Iterable[T], T]) -> List[Union[dict, list, str]]:
     """
     Translate deserialized objects into a serialized list of dictionaries/strings with function f.
     If x is None or empty, an empty array is returned.

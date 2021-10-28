@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import dotenv
-from battlefy_toolkit.caching.fileio import  save_as_json_to_file
+from battlefy_toolkit.caching.fileio import save_as_json_to_file
 from dateutil.parser import isoparse
 from os import makedirs
 from os.path import exists

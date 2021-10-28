@@ -15,7 +15,7 @@ from slapp_py.misc.download_from_battlefy_result import get_or_fetch_tourney_tea
     update_sources_with_placements
 from slapp_py.misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR
 from slapp_py.misc.sources_to_skills import update_sources_with_skills
-from slapp_py.slapp_runner.slapipes import initialise_slapp, SLAPP_DATA_FOLDER
+from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER, SlapPipe
 
 
 async def receive_slapp_response(success_message: str, response: dict):
@@ -182,10 +182,11 @@ def _phase_3(new_sources_file_path: str, option: str):
     loop = asyncio.get_event_loop()
     command = f"--{option} {new_sources_file_path}"
     print("Calling " + command)
+    slappipe = SlapPipe()
 
     loop.run_until_complete(
         asyncio.gather(
-            initialise_slapp(receive_slapp_response, command)
+            slappipe.initialise_slapp(receive_slapp_response, command)
         )
     )
 

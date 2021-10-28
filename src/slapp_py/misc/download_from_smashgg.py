@@ -8,9 +8,7 @@ import dotenv
 from battlefy_toolkit.caching.fileio import save_as_json_to_file
 import challonge
 from dateutil.parser import isoparse
-from smashggpy.models.Event import Event
 from smashggpy.util import Initializer
-from smashggpy.util.QueryQueueDaemon import QueryQueueDaemon
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
