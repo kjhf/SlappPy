@@ -64,13 +64,10 @@ def is_none_or_whitespace(value: Optional[str]) -> bool:
     :param value: The string to test
     :returns: True if the value parameter is None or Empty, or if value consists exclusively of white-space characters.
     """
-    if value is None:
+    if not value:
         return True
 
-    for i in range(0, len(value)):
-        if not value[i].isspace():
-            return False
-    return True
+    return value.isspace()
 
 
 def join(separator: str, collection: list) -> str:

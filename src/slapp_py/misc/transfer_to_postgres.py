@@ -36,13 +36,13 @@ if __name__ == '__main__':
             players_snapshot = load_json_from_file(players_snapshot_path)
 
             print(f'Processing {len(players_snapshot)} players.')
-            for i, _ in enumerate(players_snapshot):
-                this_id = players_snapshot[i]['Id']
-                this_names = players_snapshot[i]['Names']
-                this_teams = players_snapshot[i]['Teams']
-                this_sources = players_snapshot[i]['Sources']
-                this_discord_name = players_snapshot[i]['DiscordName']
-                this_friend_code = players_snapshot[i]['FriendCode']
+            for i, p in enumerate(players_snapshot):
+                this_id = p['Id']
+                this_names = p['Names']
+                this_teams = p['Teams']
+                this_sources = p['Sources']
+                this_discord_name = p['DiscordName']
+                this_friend_code = p['FriendCode']
 
                 execute_str = "INSERT INTO players (id, names, teams, sources, discord_name, friend_code) " \
                               "VALUES (%s, %s, %s, %s, %s, %s);"
@@ -64,19 +64,19 @@ if __name__ == '__main__':
             teams_snapshot = load_json_from_file(teams_snapshot_path)
 
             print(f'Loaded {len(teams_snapshot)} teams.')
-            for i, _ in enumerate(teams_snapshot):
-                this_id = teams_snapshot[i]['Id']
-                this_name = teams_snapshot[i]['Name']
-                this_div = json.dumps(teams_snapshot[i]['Div'])
-                this_clan_tags = teams_snapshot[i]['ClanTags']
-                this_clan_tag_option = teams_snapshot[i]['ClanTagOption']
+            for i, t in enumerate(teams_snapshot):
+                this_id = t['Id']
+                this_name = t['Name']
+                this_div = json.dumps(t['Div'])
+                this_clan_tags = t['ClanTags']
+                this_clan_tag_option = t['ClanTagOption']
                 # SQL uses index 1 for enums
                 cursor.execute(f'SELECT (ENUM_RANGE(NULL::clan_tag_option_enum))[{this_clan_tag_option + 1}]'
                                f'FROM generate_series(1, 5) s')
                 # This returns the result in array of length 5. Just get the first to squash.
                 this_clan_tag_option = cursor.fetchall()[0]
-                this_sources = teams_snapshot[i]['Sources']
-                this_twitter = teams_snapshot[i]['Twitter']
+                this_sources = t['Sources']
+                this_twitter = t['Twitter']
 
                 execute_str = "INSERT INTO teams (id, name, div, clan_tags, clan_tag_option, sources, twitter) " \
                               "VALUES (%s, %s, %s, %s, %s, %s, %s);"

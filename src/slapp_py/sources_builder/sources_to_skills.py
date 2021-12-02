@@ -5,7 +5,6 @@ from uuid import UUID
 
 import dotenv
 from battlefy_toolkit.caching.fileio import save_as_json_to_file
-
 from slapp_py.core_classes import division
 from slapp_py.core_classes.player import Player
 from slapp_py.core_classes.skill import Skill
@@ -53,10 +52,12 @@ def update_sources_with_skills(
     sources = sorted(sources, key=lambda s: s.start)
     for source in sources:
         has_changes = False
-        print(f'Working on {source.name}')
+        print(f'Working on {source.name} with {len(source.brackets)} brackets')
         for bracket in source.brackets:
             for match in bracket.matches:
-                if match.score.winning_team_index != -1 and match.ids:
+                if match.score.winning_team_index == -1 or not match.ids:
+                    print(f"The match in {bracket.name} is incomplete. {match.score.winning_team_index=}, {len(match.ids)=}")
+                else:
                     match_dict = [
                         # [0] team 1
                         {
@@ -126,7 +127,7 @@ def update_sources_with_skills(
         else:
             print(f"Finished {source.name=} but no changes.")
 
-    print("All done, saving the Players snapshot to: " + destination_players_path)
+    print("Update sources with Skills done, saving the Players snapshot to: " + destination_players_path)
     save_as_json_to_file(destination_players_path, list(map(Player.to_dict, players_dict.values())), indent=0)
 
 

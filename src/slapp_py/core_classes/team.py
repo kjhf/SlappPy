@@ -38,7 +38,7 @@ class Team:
                  twitter_profiles: Optional[List[Twitter]] = None,
                  guid: Union[None, str, UUID] = None):
         self.battlefy_persistent_team_ids = battlefy_persistent_team_ids or []
-        self.clan_tags = clan_tags or []
+        self.clan_tags = list(set(clan_tags or []))
         self.divisions = divisions or []
 
         if not names:
@@ -50,9 +50,11 @@ class Team:
             self.names = []
             for i in range(0, len(names)):
                 if isinstance(names[i], str):
-                    self.names.append(Name(names[i], None))
+                    if not any(n == names[i] for n in self.names):
+                        self.names.append(Name(names[i], None))
                 elif isinstance(names[i], Name):
-                    self.names.append(names[i])
+                    if not any(n == names[i].value for n in self.names):
+                        self.names.append(names[i])
                 else:
                     logging.error(f"team: Can't handle {names[i]} -- expected Name or str. Ignoring.")
 

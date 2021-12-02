@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 from os.path import isfile
@@ -6,7 +5,8 @@ from os.path import isfile
 import dotenv
 from battlefy_toolkit.resolvers.DiscordIdResolver import DiscordIdResolver
 
-if __name__ == '__main__':
+
+def transform_sendou_file():
     dotenv.load_dotenv()
     resolver = DiscordIdResolver(os.getenv("BOT_TOKEN"))
 
@@ -34,7 +34,6 @@ if __name__ == '__main__':
 
         users_node = players_snapshot["users"]
         print(f'Processing {len(users_node)} players.')
-        last_time = datetime.datetime.now()
         for i in users_node:
             if 'discord_id' in i:
                 discord_id = i["discord_id"]
@@ -53,3 +52,7 @@ if __name__ == '__main__':
 
         with open(sendou_path, 'w', encoding='utf-8') as outfile:
             json.dump(players_snapshot, outfile)
+
+
+if __name__ == '__main__':
+    transform_sendou_file()

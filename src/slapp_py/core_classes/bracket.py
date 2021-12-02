@@ -15,7 +15,7 @@ class Bracket:
                  matches: Optional[List[Game]] = None,
                  placements: Optional[Placement] = None):
         self.name: str = name or UNKNOWN_BRACKET
-        self.matches: Set[Game] = matches or set()
+        self.matches: List[Game] = matches or list()
         self.placements: Placement = placements or Placement()
 
     def __str__(self):
@@ -42,9 +42,22 @@ class Bracket:
     @property
     def players(self) -> Set[UUID]:
         """Get a set of all the players that have played in this Bracket."""
-        return {match.players for match in self.matches}
+        players = set()
+        for match in self.matches:
+            for player in match.players:
+                players.add(player)
+        return players
 
     @property
     def teams(self) -> Set[UUID]:
         """Get a set of all the teams that have played in this Bracket."""
-        return {match.teams for match in self.matches}
+        teams = set()
+        for match in self.matches:
+            for team in match.teams:
+                teams.add(team)
+        return teams
+
+    @property
+    def is_valid(self):
+        return self.players and self.teams and \
+               self.placements.players_by_placement and self.placements.teams_by_placement

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Union
 from uuid import UUID, uuid4
 
@@ -6,6 +7,7 @@ from slapp_py.core_classes.discord import Discord
 from slapp_py.core_classes.friend_code import FriendCode
 from slapp_py.core_classes.name import Name
 from slapp_py.core_classes.skill import Skill
+from slapp_py.core_classes.socials.plus_membership import PlusMembership
 from slapp_py.core_classes.socials.sendou import Sendou
 from slapp_py.core_classes.socials.twitch import Twitch
 from slapp_py.core_classes.socials.twitter import Twitter
@@ -30,6 +32,9 @@ class Player:
 
     names: List[Name]
     """Back-store for the names of this player. The first element is the current name."""
+
+    plus_membership: List[PlusMembership]
+    """Back-store for the PlusMembership Profiles of this player."""
 
     skill: Skill
     """This player's calculated TrueSkill values"""
@@ -63,6 +68,7 @@ class Player:
                  discord: Optional[Discord] = None,
                  friend_codes: Optional[List[FriendCode]] = None,
                  skill: Optional[Skill] = None,
+                 plus_membership: Optional[List[PlusMembership]] = None,
                  sendou_profiles: Optional[List[Sendou]] = None,
                  twitch_profiles: Optional[List[Twitch]] = None,
                  twitter_profiles: Optional[List[Twitter]] = None,
@@ -77,9 +83,13 @@ class Player:
         self.names = []
         for i in range(0, len(names)):
             if isinstance(names[i], str):
-                self.names.append(Name(names[i], None))
+                if not any(n == names[i] for n in self.names):
+                    self.names.append(Name(names[i], None))
             elif isinstance(names[i], Name):
-                self.names.append(names[i])
+                if not any(n == names[i].value for n in self.names):
+                    self.names.append(names[i])
+            else:
+                logging.error(f"player: Can't handle {names[i]} -- expected Name or str. Ignoring.")
 
         if not teams:
             self.teams = []
@@ -96,6 +106,7 @@ class Player:
         self.discord = discord or Discord()
         self.friend_codes = friend_codes or []
         self.skill = skill or Skill()
+        self.plus_membership = plus_membership or []
         self.sendou_profiles = sendou_profiles or []
         self.twitter_profiles = twitter_profiles or []
         self.twitch_profiles = twitch_profiles or []
@@ -123,12 +134,18 @@ class Player:
             chr(ord(self.country[1]) + Player._COUNTRY_FLAG_OFFSET)
 
     @property
+    def get_latest_plus_membership(self) -> PlusMembership:
+        """Order PlusMembership by date, get the last (most recent)"""
+        return sorted(self.plus_membership, key=lambda pm: pm.date)[-1]
+
+    @property
     def sources(self):
         return \
             list(
                 sorted(
                     set(
                         sum([x.sources for x in self.names]
+                            + [x.sources for x in self.plus_membership]
                             + [x.sources for x in self.sendou_profiles]
                             + [x.sources for x in self.twitch_profiles]
                             + [x.sources for x in self.twitter_profiles]
@@ -150,6 +167,7 @@ class Player:
             discord=Discord.from_dict(obj.get("Discord")) if "Discord" in obj else None,
             friend_codes=from_list(lambda x: FriendCode.from_dict(x), obj.get("FCs")),
             names=from_list(lambda x: Name.from_dict(x), obj.get("N")),
+            plus_membership=from_list(lambda x: PlusMembership.from_dict(x), obj.get("Plus")),
             sendou_profiles=from_list(lambda x: Sendou.from_dict(x), obj.get("Sendou")),
             skill=Skill.from_dict(obj.get("Skill")) if "Skill" in obj else Skill(),
             teams=deserialize_uuids(obj, "Teams"),
@@ -174,6 +192,8 @@ class Player:
         result["Id"] = self.guid.__str__()
         if len(self.names) > 0:
             result["N"] = to_list(lambda x: Name.to_dict(x), self.names)
+        if len(self.plus_membership) > 0:
+            result["Plus"] = to_list(lambda x: PlusMembership.to_dict(x), self.plus_membership)
         if len(self.sendou_profiles) > 0:
             result["Sendou"] = to_list(lambda x: Sendou.to_dict(x), self.sendou_profiles)
         if not self.skill.is_default:
@@ -223,6 +243,9 @@ class Player:
 
             result.discord.usernames.extend(player.discord.usernames)
             result.discord.usernames = list(set(result.discord.usernames))
+
+            result.plus_membership.extend(player.plus_membership)
+            result.plus_membership = list(set(result.plus_membership))
 
             result.sendou_profiles.extend(player.sendou_profiles)
             result.sendou_profiles = list(set(result.sendou_profiles))

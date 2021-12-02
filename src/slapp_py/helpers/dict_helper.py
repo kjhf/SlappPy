@@ -123,3 +123,14 @@ def add_set_by_key(dictionary: Dict[Any, set], key: Any, values: set):
 def first_key(dictionary: Mapping[T, U], default: Optional[T] = None) -> Optional[T]:
     """Get the first key of the dictionary. Completes in O(1)"""
     return next(iter(dictionary), default)
+
+
+def key_value_list_to_dict(kv_list: List[tuple]) -> Dict[Any, list]:
+    """
+    Transform a list of key-value KV tuples into a dictionary.
+    If KV tuples exist where the keys are duplicated, the value is added to the first key's list.
+    """
+    d = {}
+    for k, v in kv_list:
+        d.setdefault(k, []).append(v)
+    return d

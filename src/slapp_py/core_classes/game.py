@@ -1,16 +1,38 @@
 from uuid import UUID
-from typing import Set, Dict, Optional, Iterable
+from typing import Set, Dict, Optional, Iterable, Union
 
 from slapp_py.core_classes.score import Score
 from slapp_py.helpers.dict_helper import serialize_uuids_as_dict, first_key, deserialize_uuids_from_dict_as_set
 
 
 class Game:
-    def __init__(self, score: Score = None, ids: Dict[UUID, Iterable[UUID]] = None):
+    def __init__(self, score: Score = None, ids: Optional[Dict[Union[UUID, str], Iterable[Union[UUID, str]]]] = None):
         self.score: Score = score or Score()
-        self.ids = dict()
-        for team_id in ids or []:
-            self.ids[team_id] = set(ids[team_id])
+        self.ids: Dict[Union[UUID, str], Set[UUID]] = dict()
+        for key, value in ids.items() or {}:
+            if isinstance(value, str):
+                value = {UUID(value)}
+            elif isinstance(value, UUID):
+                value = {value}
+            else:
+                # Normalise the type...
+                ids_to_add: Set[UUID] = set()
+                for i in value:
+                    if i is not None:
+                        if isinstance(i, str):
+                            ids_to_add.add(UUID(i))
+                        elif isinstance(i, UUID):
+                            ids_to_add.add(i)
+                        else:
+                            raise TypeError(f"Unknown value type for game ids {key=} {value=} {i=}")
+                value = ids_to_add
+
+            if isinstance(key, str):
+                self.ids[UUID(key)] = value
+            elif isinstance(key, UUID):
+                self.ids[key] = value
+            else:
+                raise TypeError(f"Unknown key type for game ids {key=} {value=}")
 
     @staticmethod
     def from_dict(obj: dict) -> 'Game':
@@ -33,7 +55,7 @@ class Game:
         return first_key(self.ids)
 
     @property
-    def team1_players(self) -> Set[UUID]:
+    def team1_players(self) -> Optional[Set[UUID]]:
         return self.ids.get(self.team1_uuid)
 
     @property
@@ -41,7 +63,7 @@ class Game:
         return list(self.ids.keys())[1]
 
     @property
-    def team2_players(self) -> Set[UUID]:
+    def team2_players(self) -> Optional[Set[UUID]]:
         return self.ids.get(self.team2_uuid)
 
     @property

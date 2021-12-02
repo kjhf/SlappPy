@@ -12,7 +12,7 @@ import re
 import traceback
 from asyncio import Queue
 from asyncio.subprocess import Process
-from typing import Callable, Any, Awaitable, Set, Optional, Tuple
+from typing import Callable, Any, Awaitable, Set, Optional, Tuple, List
 
 import dotenv
 
@@ -141,7 +141,7 @@ class SlapPipe:
         restart_on_fail = mode == "--keepOpen"
         await self._run_slapp(slapp_console_path, mode, restart_on_fail=restart_on_fail)
 
-    async def query_slapp(self, query: str, limit: Optional[int] = 20):
+    async def query_slapp(self, query: str, limit: Optional[int] = 20) -> str:
         """Query Slapp. The response comes back through the callback function that was passed in initialise_slapp."""
         options: Set[str] = set()
 
@@ -152,6 +152,8 @@ class SlapPipe:
         query = self.conditionally_add_option(options, query, 'regex', 'queryIsRegex')
         query = self.conditionally_add_option(options, query, 'queryisclantag', 'queryIsClanTag')
         query = self.conditionally_add_option(options, query, 'clantag', 'queryIsClanTag')
+        query = self.conditionally_add_option(options, query, 'queryisteamtag', 'queryIsClanTag')
+        query = self.conditionally_add_option(options, query, 'teamtag', 'queryIsClanTag')
         query = self.conditionally_add_option(options, query, 'team', 'queryIsTeam')
         query = self.conditionally_add_option(options, query, 'player', 'queryIsPlayer')
         query, has_limit_option = self.conditionally_add_limit(options, query)
@@ -173,6 +175,7 @@ class SlapPipe:
         logging.debug(f"Posting {query=} to existing Slapp process with options {' '.join(options)} ...")
         await self.slapp_write_queue.put(
             '--b64 ' + str(base64.b64encode(query.encode("utf-8")), "utf-8") + ' ' + ' '.join(options))
+        return query
 
     async def slapp_describe(self, slapp_id: str):
         """Send a slappId command to Slapp"""
@@ -180,7 +183,7 @@ class SlapPipe:
 
     @staticmethod
     def conditionally_add_option(options, query: str, typed_option_no_delimit: str, query_option_to_add: str) -> str:
-        reg = re.compile(r"(--|–|—)" + typed_option_no_delimit, re.IGNORECASE)
+        reg = re.compile(r"(--|–|—)" + typed_option_no_delimit + r"(\s|$)", re.IGNORECASE)
         (query, n) = reg.subn('', query)
         if n:
             options.add("--" + query_option_to_add)
@@ -196,3 +199,6 @@ class SlapPipe:
             query = reg.sub('', query)
             options.add("--limit " + lim)
         return query.strip(), custom_limit
+
+    def patch_slapp(self, urls: List[str]):
+        pass

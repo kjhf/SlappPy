@@ -14,27 +14,42 @@ TOURNEY_TEAMS_SAVE_DIR = join(SLAPP_DATA_FOLDER, "tourney_teams")
 STAGES_SAVE_DIR = join(TOURNEY_INFO_SAVE_DIR, "stages")
 
 
-def get_all_snapshot_players_files() -> List[str]:
-    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Players-*.json'))
+def get_slapp_files_matching(pattern: str, directory: str = SLAPP_DATA_FOLDER) -> List[str]:
+    return sorted(glob.glob(join(directory, pattern))) or []
 
 
-def get_all_snapshot_teams_files() -> List[str]:
-    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Teams-*.json'))
-
-
-def get_latest_snapshot_players_file() -> Optional[str]:
-    files = get_all_snapshot_players_files()
+def get_latest_slapp_files_matching(pattern: str, directory: str = SLAPP_DATA_FOLDER) -> Optional[str]:
+    files = get_slapp_files_matching(pattern, directory)
     if files:
         return files[-1]
     else:
         return None
 
 
+def get_latest_snapshot_sources_file() -> Optional[str]:
+    return get_latest_slapp_files_matching(f'Snapshot-Sources-*.json')
+
+
+def get_latest_snapshot_players_file() -> Optional[str]:
+    return get_latest_slapp_files_matching(f'Snapshot-Players-*.json')
+
+
 def get_latest_snapshot_teams_file() -> Optional[str]:
-    files = get_all_snapshot_teams_files()
-    if files:
-        return files[-1]
+    return get_latest_slapp_files_matching(f'Snapshot-Teams-*.json')
+
+
+def get_latest_sources_yaml_file() -> Optional[str]:
+    return get_latest_slapp_files_matching(f'sources.yaml')
+
+
+def load_latest_snapshot_sources_file() -> Optional[List[Source]]:
+    file = get_latest_snapshot_sources_file()
+    if file:
+        print('Loading sources from ' + file)
+        loaded = load_json_from_file(file)
+        return [Source.from_dict(d) for d in loaded]
     else:
+        print('Sources file not found.')
         return None
 
 
@@ -57,29 +72,6 @@ def load_latest_snapshot_teams_file() -> Optional[List[Team]]:
         return [Team.from_dict(d) for d in loaded]
     else:
         print('Teams file not found.')
-        return None
-
-
-def get_all_snapshot_sources_files() -> List[str]:
-    return glob.glob(join(SLAPP_DATA_FOLDER, f'Snapshot-Sources-*.json'))
-
-
-def get_latest_snapshot_sources_file() -> Optional[str]:
-    files = get_all_snapshot_sources_files()
-    if files:
-        return files[-1]
-    else:
-        return None
-
-
-def load_latest_snapshot_sources_file() -> Optional[List[Source]]:
-    file = get_latest_snapshot_sources_file()
-    if file:
-        print('Loading sources from ' + file)
-        loaded = load_json_from_file(file)
-        return [Source.from_dict(d) for d in loaded]
-    else:
-        print('Sources file not found.')
         return None
 
 

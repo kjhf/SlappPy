@@ -82,12 +82,11 @@ NO_FRIEND_CODE = FriendCode(NO_FRIEND_CODE_SHORTS)
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
-    fc = input('Enter friend code.')
+    __entered = input('Enter friend code.')
     try:
-        i = int(fc)
-        fc = FriendCode(i)
+        __result = FriendCode(int(__entered))
     except ValueError:
-        fc = FriendCode(fc)
+        __result = FriendCode(__entered)
 
-    print(fc)
+    print(__result)
 
