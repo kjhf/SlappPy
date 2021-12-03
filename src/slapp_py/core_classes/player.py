@@ -134,9 +134,9 @@ class Player:
             chr(ord(self.country[1]) + Player._COUNTRY_FLAG_OFFSET)
 
     @property
-    def get_latest_plus_membership(self) -> PlusMembership:
-        """Order PlusMembership by date, get the last (most recent)"""
-        return sorted(self.plus_membership, key=lambda pm: pm.date)[-1]
+    def latest_plus_membership(self) -> Optional[PlusMembership]:
+        """Order PlusMembership by date, get the last (most recent) or None"""
+        return (sorted(self.plus_membership, key=lambda pm: pm.date)[-1]) if self.plus_membership else None
 
     @property
     def sources(self):

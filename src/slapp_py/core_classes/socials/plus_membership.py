@@ -18,7 +18,7 @@ class PlusMembership(Social):
         )
 
     @property
-    def level(self):
+    def level(self) -> Optional[int]:
         """Returns the Membership's level as an int (or None)"""
         try:
             return int(self.handle.partition('/')[0])
