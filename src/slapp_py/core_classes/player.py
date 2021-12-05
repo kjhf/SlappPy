@@ -76,6 +76,7 @@ class Player:
                  country: Optional[str] = None,
                  top500: bool = False,
                  guid: Union[None, str, UUID] = None):
+        # When adding params please update filter_to_source
 
         if not isinstance(names, list):
             names = [names]
@@ -137,6 +138,25 @@ class Player:
     def latest_plus_membership(self) -> Optional[PlusMembership]:
         """Order PlusMembership by date, get the last (most recent) or None"""
         return (sorted(self.plus_membership, key=lambda pm: pm.date)[-1]) if self.plus_membership else None
+
+    def filter_to_source(self, source_id: Union[str, UUID]) -> 'Player':
+        """Filter this Player instance down to the components made by a source id."""
+        search_uuid = source_id if isinstance(source_id, UUID) else UUID(source_id)
+        return Player(
+            names=[name for name in self.names if search_uuid in name.sources],
+            teams=self.teams,  # TODO - teams don't have associated Sources at this level. Needs adding.
+            battlefy=self.battlefy.filter_to_source(source_id),
+            discord=self.discord.filter_to_source(source_id),
+            friend_codes=self.friend_codes,  # TODO - FCs don't have associated Sources at this level. Needs adding.
+            skill=None,
+            plus_membership=[name for name in self.plus_membership if search_uuid in name.sources],
+            sendou_profiles=[name for name in self.sendou_profiles if search_uuid in name.sources],
+            twitch_profiles=[name for name in self.twitch_profiles if search_uuid in name.sources],
+            twitter_profiles=[name for name in self.twitter_profiles if search_uuid in name.sources],
+            weapons=None,
+            country=self.country,
+            top500=self.top500,
+            guid=self.guid)
 
     @property
     def sources(self):

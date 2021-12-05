@@ -297,8 +297,8 @@ def get_source_by_tourney_id(tourney_id: str,
 def add_tourney_placement_to_source(tourney_id: str,
                                     players: Iterable[Player],
                                     sources: List[Source]) -> bool:
-    stage_ids = set([stage_id for stage_id in get_stage_ids_for_tourney(tourney_id)
-                     if is_valid_battlefy_id(stage_id)])
+    stage_ids = {stage_id for stage_id in get_stage_ids_for_tourney(tourney_id)
+                 if is_valid_battlefy_id(stage_id)}
     if len(stage_ids) == 0:
         print(f'No stages found in {tourney_id=}.')
         return False
@@ -481,9 +481,9 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
         assert players, "No Players found in the Players snapshot file."
 
     if not tourney_ids:
-        tourney_ids = set([source.tournament_id for source in sources
-                           if not source.brackets
-                           and filter_non_battlefy_source(source.name)])
+        tourney_ids = {source.tournament_id for source in sources
+                       if not source.brackets
+                       and filter_non_battlefy_source(source.name)}
 
     if not destination_sources_path:
         destination_sources_path = \
@@ -492,7 +492,7 @@ def update_sources_with_placements(tourney_ids: Optional[Collection[str]] = None
     # Filter ids that are less than 20 characters or more than 30 (id is probably not correct) --
     # expected 24 chars, and hex numbers only.
     original_count = len(tourney_ids)
-    tourney_ids = set([tourney_id for tourney_id in tourney_ids if is_valid_battlefy_id(tourney_id)])
+    tourney_ids = {tourney_id for tourney_id in tourney_ids if is_valid_battlefy_id(tourney_id)}
     actual_count = len(tourney_ids)
     if original_count != actual_count:
         print(f'Some ids were filtered as they were invalid ({original_count} -> {len(tourney_ids)})')

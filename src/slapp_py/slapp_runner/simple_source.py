@@ -101,7 +101,7 @@ class SimpleSource:
         otherwise return its truncated_name only."""
         link = self.url
         if self.date:
-            text = truncate(escape_characters(self.date), 16, '…')
+            text = truncate(escape_characters(self.date), 16)
         else:
             text = self.truncated_name
         return f"[{text}]({link})" if link else text
@@ -120,7 +120,7 @@ class SimpleSource:
             display_name = self.date + '-' + self.tournament_name
         else:
             display_name = self._strip_source_id(self.name)
-        return truncate(escape_characters(display_name), 100, '…')
+        return truncate(escape_characters(display_name), 100)
 
     @staticmethod
     def _strip_source_id(source):

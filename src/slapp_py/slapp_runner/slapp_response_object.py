@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Union, List, Tuple, Optional, Iterable
+from typing import Dict, Union, List, Tuple, Optional, Iterable, SupportsInt, Set
 from uuid import UUID
 
 from slapp_py.core_classes.bracket import Bracket
@@ -108,18 +108,23 @@ class SlappResponseObject:
         return [tup[0] for tup in self.matched_players_for_teams.get(team_guid.__str__(), [])
                 if tup and (tup[1] or include_ex_players)]
 
-    def get_team(self, team_id: Union[str, UUID]) -> Team:
+    def get_teams_from_ids(self, team_ids: Iterable[Union[str, UUID]]) -> List[Team]:
         from slapp_py.core_classes.builtins import NoTeam, UnknownTeam
-        if isinstance(team_id, UUID):
-            t_str = team_id.__str__()
-        elif isinstance(team_id, str):
-            t_str = team_id
-        elif team_id is None:
-            return NoTeam
-        else:
-            assert False, f"Don't know what {team_id} is"
+        result = []
+        for team_id in team_ids:
+            if isinstance(team_id, UUID):
+                t_str = team_id.__str__()
+            elif isinstance(team_id, str):
+                t_str = team_id
+            elif team_id is None:
+                return NoTeam
+            else:
+                assert False, f"Don't know what {team_id} is"
+            result.append(NoTeam if t_str == NoTeam.guid.__str__() else self.known_teams.get(t_str, UnknownTeam))
+        return result
 
-        return NoTeam if t_str == NoTeam.guid.__str__() else self.known_teams.get(t_str, UnknownTeam)
+    def get_team(self, team_id: Union[str, UUID]) -> Team:
+        return self.get_teams_from_ids([team_id])[0]
 
     def get_teams_for_player(self, p: Player) -> List[Team]:
         return [self.get_team(t_uuid) for t_uuid in p.teams]
@@ -188,28 +193,38 @@ class SlappResponseObject:
             message.append(f"{group_key}{group_value}")
         return message
 
-    def get_brackets_for_player(self, p: Player, source_id: str) -> List[Bracket]:
+    def get_brackets_for_player(self, p: Player) -> Dict[str, List[Bracket]]:
         """
-        Gets the brackets for the specified player for the source specified.
+        Gets the brackets for the specified player in a dictionary keyed by the source id and its brackets.
         """
-        return self.placements_for_players.get(p.guid.__str__(), {}).get(source_id.__str__(), [])
+        return self.placements_for_players.get(p.guid.__str__(), {})
 
-    def get_first_placements(self, p: Player) -> List[str]:
+    def get_brackets_for_player_by_source(self, p: Player, source_id: str) -> List[Bracket]:
         """
-        Gets a list of displayed text in form {bracket.name} + ' in ' + {linked_source}
-        where the specified player has come first.
+        Gets the brackets for the specified player for the source specified as a flat list.
+        """
+        return self.get_brackets_for_player(p).get(source_id.__str__(), [])
+
+    def get_placements_by_place(self, p: Player, place: Union[int, SupportsInt] = 1) -> List[Tuple[SimpleSource, Bracket, Set[UUID]]]:
+        """
+        Gets a list of SimpleSources and their brackets where the specified player has
+        come in the given place (first by default).
+
+        :param p: The player object
+        :param place: The position the player came in to search (by default, 1, to represent first place).
         """
         result = []
-        sources = self.get_simple_sources(p)
-        for simple_source in sources:
-            brackets = self.get_brackets_for_player(p, simple_source.id)
-            for bracket in brackets:
-                if 1 in bracket.placements.players_by_placement:
+        place = place if isinstance(place, int) else int(place)
+        brackets_by_source = self.get_brackets_for_player(p)
+        for source_id, brackets in brackets_by_source.items():
+            for bracket in brackets:  # Note: We need the bracket name so it's easier to do as a rolled-foreach loop
+                if place in bracket.placements.players_by_placement:
                     first_place_ids = [player_id.__str__() for player_id in
                                        bracket.placements.players_by_placement[1]]
                     if p.guid.__str__() in first_place_ids:
-                        result.append(bracket.name + ' in ' + simple_source.get_linked_name_display())
-
+                        from slapp_py.core_classes.builtins import NoTeam
+                        team = bracket.placements.teams_by_placement.get(place, {NoTeam.guid})
+                        result.append((self.sources[source_id], bracket, team))
         return result
 
     def get_low_ink_placements(self, p: Player) -> List[Tuple[int, str, str]]:

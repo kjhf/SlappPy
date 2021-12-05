@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Union
+from uuid import UUID
 
 from slapp_py.core_classes.name import Name
 from slapp_py.helpers.dict_helper import from_list, to_list
@@ -8,6 +9,7 @@ from slapp_py.helpers.str_helper import join
 class Discord:
     ids: List[Name]
     usernames: List[Name]
+    # Append filter_to_source if adding
 
     def __init__(self, ids=None, usernames=None):
         if ids is None:
@@ -17,8 +19,12 @@ class Discord:
         self.ids = ids
         self.usernames = usernames
 
-    def __str__(self):
-        return f"Ids: [{join(', ', self.ids)}], Usernames: [{join(', ', self.usernames)}]"
+    def filter_to_source(self, source_id: Union[str, UUID]) -> 'Discord':
+        search_uuid = source_id if isinstance(source_id, UUID) else UUID(source_id)
+        return Discord(
+            ids=[name for name in self.ids if search_uuid in name.sources],
+            usernames=[name for name in self.usernames if search_uuid in name.sources]
+        )
 
     @staticmethod
     def from_dict(obj: dict) -> 'Discord':
@@ -35,3 +41,6 @@ class Discord:
         if len(self.usernames) > 0:
             result["Usernames"] = to_list(lambda x: Name.to_dict(x), self.usernames)
         return result
+
+    def __str__(self):
+        return f"Ids: [{join(', ', self.ids)}], Usernames: [{join(', ', self.usernames)}]"

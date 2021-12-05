@@ -23,8 +23,10 @@ class ClanTag(Name):
         assert isinstance(obj, dict)
         name = Name.from_dict(obj)
 
-        layout_option: str = obj.get("LayoutOption", TagOption.Unknown)
-        if isinstance(layout_option, str):
+        layout_option = obj.get("LayoutOption", TagOption.Unknown)
+        if isinstance(layout_option, TagOption):
+            pass
+        elif isinstance(layout_option, str):
             layout_option = TagOption[layout_option]
         assert isinstance(layout_option, TagOption)
         return ClanTag(name.value, name.sources, layout_option)

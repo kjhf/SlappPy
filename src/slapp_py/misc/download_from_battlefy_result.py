@@ -122,7 +122,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, fo
         raise ValueError(f'get_or_fetch_stage_file: Expected ids. {tourney_id_to_fetch=} {stage_id_to_fetch=}')
 
     _stages = get_stage_ids_for_tourney(tourney_id_to_fetch, force=force)
-    _stages = set([stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)])
+    _stages = {stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)}
     assert stage_id_to_fetch in _stages
 
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
@@ -149,7 +149,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, fo
 
 def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, force: bool = False) -> Optional[dict]:
     _stages = get_stage_ids_for_tourney(tourney_id_to_fetch)
-    _stages = set([stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)])
+    _stages = {stage_id for stage_id in _stages if is_valid_battlefy_id(stage_id)}
     assert stage_id_to_fetch in _stages
 
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
