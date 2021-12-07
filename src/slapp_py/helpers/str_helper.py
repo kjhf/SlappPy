@@ -1,4 +1,4 @@
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, SupportsInt
 
 
 def escape_characters(string: Union[str, dict], characters: str = '\\', escape_character: str = '\\') -> str:
@@ -22,7 +22,7 @@ def escape_characters(string: Union[str, dict], characters: str = '\\', escape_c
     return string
 
 
-def truncate(string: str, max_length: int, indicator: str = "…") -> str:
+def truncate(string: str, max_length: SupportsInt, indicator: str = "…") -> str:
     """
     Truncates the given string up to a maximum length (including the truncation string).
     Strings that are already the max_length or less will be returned as-is.
@@ -38,6 +38,9 @@ def truncate(string: str, max_length: int, indicator: str = "…") -> str:
 
     if not isinstance(string, str):
         raise ValueError('string specified to truncate is not a string.')
+
+    if not isinstance(max_length, int):
+        max_length = int(max_length)
 
     if len(indicator) > max_length:
         raise ValueError('Truncation indicator length cannot be greater than the maximum length of the string.')

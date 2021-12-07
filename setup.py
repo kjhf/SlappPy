@@ -11,7 +11,7 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='SlappPy-Slate',
-    version='1.12.3',
+    version='1.12.4',
     author='Slate',
     description='SlappPy is the Python support and generation code for Slapp and Dola.',
     long_description=long_description,
