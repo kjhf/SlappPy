@@ -15,16 +15,19 @@ SOURCE_ORGANISER_MAPPING: Dict[str, List[str]] = {
     'inkling-performance-labs': ['-low-ink-', '-testing-grounds-', '-swim-or-sink-'],
     'inktv': ['-bns-', '-swl-winter-snowflake-', '-splatoon-world-league-', '-inktv-open-', '-extrafaganza-', '-inkvitational-'],
     'jerrys-crown-cup': ['-jerrys-crown-cup-'],
+    'jpgs-questionable-tournaments': ['fastest-event-in-the-west-'],
     'little-squid-league': ['-little-squid-league-', '-little-squid-league-invitational-'],
     'midway-ink-tour': ['-midway-'],
     'sitback-saturdays': ['-sitback-saturdays-'],
     'splatcom': ['-armas-random-', '-duelos-', '-dúos-dittos-', 'splatcom-', '-suizo-latino-', '-torneo-de-', '-torneo-festivo-'],
     'splatoon2': ['-splatoon-2-north-american-online-open-'],
     'splatoon-amateur-circuit': ['-sac-tournament-', '-season-3-tournament-3-youre-an', '-season-3-tournament-2-hey-now'],
+    'squid-junction': ['squid-junction-'],
     'squid-south': ['squid-south-2v2-', '-squid-souths-halloween-2v2-'],
     'squid-spawning-grounds': ['-squid-spawning-grounds-'],
     'squidboards-splatoon-2-community-events': ['-sqss-', '-squidboards-splat-series-'],
     'swift-second-saturdays': ['-sss-'],
+    'ultimate-splat-championship': ['-usc-'],
 }
 
 TOURNAMENT_ID_REGEX = re.compile("-+([0-9a-fA-F]+)$", re.I)
