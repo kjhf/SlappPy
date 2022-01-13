@@ -1,6 +1,5 @@
-from typing import List, Union
-from uuid import UUID
-
+from typing import List
+from slapp_py.core_classes.simple_source import SimpleSource
 from slapp_py.core_classes.name import Name
 from slapp_py.helpers.dict_helper import from_list, to_list
 from slapp_py.helpers.str_helper import join
@@ -19,11 +18,10 @@ class Discord:
         self.ids = ids
         self.usernames = usernames
 
-    def filter_to_source(self, source_id: Union[str, UUID]) -> 'Discord':
-        search_uuid = source_id if isinstance(source_id, UUID) else UUID(source_id)
+    def filter_to_source(self, source_id: SimpleSource) -> 'Discord':
         return Discord(
-            ids=[name for name in self.ids if search_uuid in name.sources],
-            usernames=[name for name in self.usernames if search_uuid in name.sources]
+            ids=[name for name in self.ids if source_id in name.sources],
+            usernames=[name for name in self.usernames if source_id in name.sources]
         )
 
     @staticmethod

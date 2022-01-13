@@ -22,6 +22,10 @@ def escape_characters(string: Union[str, dict], characters: str = '\\', escape_c
     return string
 
 
+def insert(source: str, index: int, value: str):
+    return ''.join((source[:index], value, source[index:]))
+
+
 def truncate(string: str, max_length: SupportsInt, indicator: str = "…") -> str:
     """
     Truncates the given string up to a maximum length (including the truncation string).

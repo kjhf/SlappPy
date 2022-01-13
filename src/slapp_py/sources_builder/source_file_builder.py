@@ -120,12 +120,10 @@ def generate_new_sources_files(battlefy_ids: Collection[str], skip_redownload: b
                         print(f"ERROR: Reattempt failed. Skipping file. "
                               f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
 
-    # And the other data files
+    # And the other json or tsv data files
     additional_files = []
-    additional_files.extend(get_slapp_files_matching('*-Sendou.json', TOURNEY_TEAMS_SAVE_DIR))
-    additional_files.extend(get_slapp_files_matching('*-LUTI-S*.tsv', TOURNEY_TEAMS_SAVE_DIR))
-    additional_files.extend(get_slapp_files_matching('*-DSB-S*.tsv', TOURNEY_TEAMS_SAVE_DIR))
-    additional_files.extend(get_slapp_files_matching('*-LaunchPoint-*.tsv', TOURNEY_TEAMS_SAVE_DIR))
+    additional_files.extend(get_slapp_files_matching('*-*-*-*.json', TOURNEY_TEAMS_SAVE_DIR))
+    additional_files.extend(get_slapp_files_matching('*-*-*-*.tsv', TOURNEY_TEAMS_SAVE_DIR))
 
     for additional_file in additional_files or []:
         relative_path = relpath(additional_file, start=SLAPP_DATA_FOLDER)

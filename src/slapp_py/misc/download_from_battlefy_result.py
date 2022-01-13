@@ -80,7 +80,8 @@ def get_or_fetch_tourney_info_file(tourney_id_to_fetch: str, force: bool = False
     matched_tourney_files = glob.glob(join(TOURNEY_INFO_SAVE_DIR, f'*{filename}'))
     full_path = matched_tourney_files[0] if len(matched_tourney_files) else join(TOURNEY_INFO_SAVE_DIR, filename)
     if force or not isfile(full_path):
-        tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT.format(tourney_id=tourney_id_to_fetch))
+        print(f"Fetching tourney_info_file as {force=} or {isfile(full_path)=}")
+        tourney_contents = fetch_address(TOURNAMENT_INFO_FETCH_ADDRESS_FORMAT.format(tourney_id=tourney_id_to_fetch), assert_success=force)
 
         if len(tourney_contents) == 0:
             print(f'ERROR get_or_fetch_tournament_file: Nothing exists at {tourney_id_to_fetch=}.')
@@ -128,7 +129,7 @@ def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, fo
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
                        f'{stage_id_to_fetch}-battlefy.json')
     if force or not isfile(_stage_path):
-        _stage_contents = fetch_address(STAGE_INFO_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch))
+        _stage_contents = fetch_address(STAGE_INFO_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch), assert_success=force)
         if len(_stage_contents) == 0:
             print(f'ERROR get_or_fetch_stage_file: Nothing exists at {tourney_id_to_fetch=} / {stage_id_to_fetch=}')
             return None
@@ -155,7 +156,7 @@ def get_or_fetch_standings_file(tourney_id_to_fetch: str, stage_id_to_fetch: str
     _stage_path = join(STAGES_SAVE_DIR, tourney_id_to_fetch.__str__(),
                        f'{stage_id_to_fetch}-standings.json')
     if force or not isfile(_stage_path):
-        _stage_contents = fetch_address(STAGE_STANDINGS_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch))
+        _stage_contents = fetch_address(STAGE_STANDINGS_FETCH_ADDRESS_FORMAT.format(stage_id=stage_id_to_fetch), assert_success=force)
         if len(_stage_contents) == 0:
             print(f'ERROR get_or_fetch_standings_file: Nothing exists at {tourney_id_to_fetch=} / {stage_id_to_fetch=}')
             return None
@@ -179,7 +180,7 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str, force: bool = Fals
     matched_tourney_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
     full_path = matched_tourney_files[0] if len(matched_tourney_files) else join(TOURNEY_TEAMS_SAVE_DIR, filename)
     if force or not isfile(full_path):
-        teams_contents = fetch_address(TEAMS_FETCH_ADDRESS_FORMAT % tourney_id_to_fetch)
+        teams_contents = fetch_address(TEAMS_FETCH_ADDRESS_FORMAT % tourney_id_to_fetch, assert_success=force)
 
         if len(teams_contents) == 0:
             print(f'ERROR get_or_fetch_tourney_teams_file: Nothing exists at {tourney_id_to_fetch=}.')

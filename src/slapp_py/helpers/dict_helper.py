@@ -1,5 +1,5 @@
 import logging
-from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set, Optional, Type, Tuple
+from typing import TypeVar, Callable, Any, List, Union, Dict, Iterable, Mapping, Set, Optional, Tuple, Type
 from uuid import UUID
 
 T = TypeVar("T")
@@ -64,20 +64,15 @@ def serialize_uuids_as_dict(uuids: Mapping[Any, Iterable[UUID]]) -> Dict[str, Li
     return result
 
 
-def deserialize_uuids(info: Mapping,
-                      key: Optional[str] = None,
-                      additional_maps: Iterable[Tuple[Type, Callable[[Any], UUID]]] = None) -> List[UUID]:
+def deserialize_uuids_into_list(incoming_uuids: Union[UUID, str, Iterable[Union[str, UUID]]],
+                                additional_maps: Iterable[Tuple[Type, Callable[[Any], UUID]]] = None) -> List[UUID]:
     """
-    Read `info` dictionary at `key` for a list of uuids and deserialize them.
-    If `key` is None, then the info's values/child keys will be used instead.
+    Read the incoming_uuids for a list of uuids and deserialize them by converting from str or constructing
+    a list as necessary. Empties and Nones are removed.
     Use `additional_maps` to specify any further Type to uuid conversions.
-    Returns [] if key not found.
+    :raises ValueError: A string was specified but is not a UUID.
     """
     uuids: List[UUID] = []
-    if not key or key == 'None':
-        incoming_uuids = info
-    else:
-        incoming_uuids = info.get(key, [])
 
     if not isinstance(incoming_uuids, list):
         incoming_uuids = [incoming_uuids]
@@ -85,33 +80,53 @@ def deserialize_uuids(info: Mapping,
     if not incoming_uuids:
         return []
 
-    for s in incoming_uuids:
-        try:
-            if not s:
-                pass
-            elif isinstance(s, str):
-                if s == 'None':
-                    continue
-                uuids.append(UUID(s))
-            elif isinstance(s, UUID):
-                uuids.append(s)
+    for val in incoming_uuids:
+        if val is None:
+            pass
+        elif isinstance(val, str):
+            if not val or val.lower() in ('none', 'null'):
+                continue
+            uuids.append(UUID(val))
+        elif isinstance(val, UUID):
+            uuids.append(val)
+        else:
+            for mapping in additional_maps or []:
+                if isinstance(val, mapping[0]):
+                    fn: Callable[[Any], UUID] = mapping[1]
+                    uuids.append(fn(val))
+                    break
             else:
-                for mapping in additional_maps or []:
-                    if isinstance(s, mapping[0]):
-                        fn: Callable[[Any], UUID] = mapping[1]
-                        uuids.append(fn(s))
-                        continue
-                logging.error(f"Could not convert s into UUID ({s=})")
-        except ValueError as e:
-            logging.error(f"ERROR in deserialize_uuids: {info=} with {key=}", exc_info=e)
+                logging.error(f"deserialize_uuids_into_list: Could not convert {val=} of {type(val)=} into a UUID")
     return uuids
 
 
-def deserialize_uuids_from_dict_as_set(info: Mapping) -> Dict[Any, Set[UUID]]:
+def deserialize_uuids(info: Mapping,
+                      key: Optional[str] = None,
+                      additional_maps: Iterable[Tuple[Type, Callable[[Any], UUID]]] = None) -> List[UUID]:
+    """
+    Read the `info` dictionary at `key` for a list of uuids and deserialize them.
+    If `key` is None, then the info's values/child keys will be used instead.
+    Returns [] if key not found.
+    """
+    if not key or key == 'None':
+        incoming_uuids = info
+    else:
+        incoming_uuids = info.get(key, [])
+
+    try:
+        uuids = deserialize_uuids_into_list(incoming_uuids, additional_maps)
+    except ValueError as e:
+        logging.error(f"deserialize_uuids: Error in {info=} with {key=}", exc_info=e)
+        uuids = []
+    return uuids
+
+
+def deserialize_uuids_from_dict_as_set(info: Mapping,
+                                       additional_maps: Iterable[Tuple[Type, Callable[[Any], UUID]]] = None) -> Dict[Any, Set[UUID]]:
     """Read a dictionary for its top-level keys and the uuids underneath."""
     result = dict()
     for key in info:
-        result[key] = set(deserialize_uuids(info, key))
+        result[key] = set(deserialize_uuids(info, key, additional_maps))
     return result
 
 
@@ -132,5 +147,19 @@ def key_value_list_to_dict(kv_list: List[tuple]) -> Dict[Any, list]:
     """
     d = {}
     for k, v in kv_list:
+        # DefaultDict
         d.setdefault(k, []).append(v)
     return d
+
+
+def order_dict_by_value(dictionary: Mapping[T, U], reverse: bool = False) -> Dict[T, U]:
+    """
+    Orders a dictionary by its values. Reverse is passed to the sorted builtin.
+    If the value is a List, a min (reverse=False) or max (reverse=True) is performed on the values
+    and its result is used in the ordering.
+    """
+    return dict(sorted(dictionary.items(),
+                       key=lambda item:
+                           (max(item[1]) if reverse else min(item[1])) if isinstance(item[1], list)
+                           else item[1],
+                       reverse=reverse))

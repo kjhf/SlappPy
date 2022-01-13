@@ -23,5 +23,8 @@ class BattlefyTeam:
         )
 
     def to_dict(self) -> dict:
-        result = {"_id": self._id, "name": self.name, "persistentTeamID": self.persistent_team_id, "players": to_list(lambda x: BattlefyPlayer.to_dict(x), self.players)}
+        result = {"_id": self._id,
+                  "name": self.name,
+                  "persistentTeamID": self.persistent_team_id,
+                  "players": to_list(lambda x: BattlefyPlayer.to_dict(x), self.players)}
         return result

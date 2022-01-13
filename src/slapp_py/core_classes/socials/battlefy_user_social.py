@@ -1,6 +1,6 @@
 from typing import Optional, Union, List
-from uuid import UUID
 
+from slapp_py.core_classes.simple_source import SimpleSource
 from slapp_py.core_classes.socials.social import Social
 
 BATTLEFY_BASE_ADDRESS = "battlefy.com/users"
@@ -9,7 +9,7 @@ BATTLEFY_BASE_ADDRESS = "battlefy.com/users"
 class BattlefyUserSocial(Social):
     def __init__(self,
                  battlefy_slug: Optional[str] = None,
-                 sources: Union[None, UUID, List[UUID]] = None):
+                 sources: Union[None, SimpleSource, List[SimpleSource]] = None):
         super().__init__(
             value=battlefy_slug,
             sources=sources,

@@ -1,6 +1,7 @@
-from slapp_py.core_classes.source import Source
-from slapp_py.core_classes.name import Name
-from slapp_py.core_classes.team import Team
+from slapp_py.core_classes import name, team
+
+NO_SOURCE = "0001-01-01-No-Source-Specified"
+"""No source name for builtins and unknowns."""
 
 UNKNOWN_PLAYER = "(Unnamed Player)"
 """Displayed string for an unknown player."""
@@ -8,17 +9,11 @@ UNKNOWN_PLAYER = "(Unnamed Player)"
 UNKNOWN_TEAM = "(Unnamed Team)"
 """Displayed string for an unknown team."""
 
-BuiltinSource: Source = Source("builtin")
-"""The built-in source, for use in objects that are pre-defined by the program code."""
-
-ManualSource: Source = Source("Manual Entry")
-"""The manual entry source, for use in objects that are defined by manual user entry."""
-
-UnknownPlayerName: Name = Name(UNKNOWN_PLAYER, BuiltinSource.guid)
+UnknownPlayerName = name.Name(UNKNOWN_PLAYER)
 """The Name for an unknown player."""
 
-UnknownTeamName: Name = Name(UNKNOWN_TEAM, BuiltinSource.guid)
+UnknownTeamName = name.Name(UNKNOWN_TEAM)
 """The Name for an unknown team."""
 
-NoTeam = Team(names=[Name("(Free Agent)", BuiltinSource.guid)])
-UnknownTeam = Team(names=[UnknownTeamName])
+NoTeam = team.Team(names=name.Name("(Free Agent)"))
+UnknownTeam = team.Team(names=UnknownTeamName)

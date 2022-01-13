@@ -133,7 +133,7 @@ def update_sources_with_skills(
 
 def seed_new_skill(player, teams: Dict[UUID, Team]) -> Skill:
     player_best_div = division.Unknown
-    for team_id in player.teams:
+    for team_id in player.teams_information.get_teams_unordered():
         team: Team = teams.get(team_id, None)
         if team and team.current_div < player_best_div:
             player_best_div = team.current_div

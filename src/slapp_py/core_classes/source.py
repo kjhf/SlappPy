@@ -1,15 +1,16 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Union, List, Optional
-from uuid import UUID, uuid4
+from typing import List, Optional, Union
+
+from slapp_py.core_classes.simple_source import SimpleSource
 
 from slapp_py.core_classes.bracket import Bracket
 from slapp_py.core_classes.player import Player
 from slapp_py.core_classes.team import Team
-from slapp_py.helpers.dict_helper import to_list, from_list, deserialize_uuids
+from slapp_py.helpers.dict_helper import to_list, from_list
 
 UNKNOWN_SOURCE = "(Unnamed Source)"
-"""Displayed string for an unknown source."""
+"""Displayed string for an unknown sources."""
 
 UNKNOWN_DATE_TIME = datetime.utcfromtimestamp(0)
 """The unknown datetime (epoch)"""
@@ -17,27 +18,37 @@ UNKNOWN_DATE_TIME = datetime.utcfromtimestamp(0)
 
 class Source:
     def __init__(self,
-                 name: Optional[str] = None,
+                 name: Optional[Union[str, SimpleSource]] = None,
                  brackets: Optional[List[Bracket]] = None,
                  players: Optional[List[Player]] = None,
                  teams: Optional[List[Team]] = None,
                  uris: Optional[List[str]] = None,
-                 start: Optional[datetime] = None,
-                 guid: Union[None, str, UUID] = None
+                 start: Optional[datetime] = None
                  ):
         self.brackets: List[Bracket] = brackets or []
-        self.name: str = name or UNKNOWN_SOURCE
+        if not name:
+            self.simple_source = SimpleSource(UNKNOWN_SOURCE)
+        elif isinstance(name, str):
+            self.simple_source = SimpleSource(name)
+        elif isinstance(name, SimpleSource):
+            self.simple_source = name
+        else:
+            self.simple_source = name
         self.players: List[Player] = players or []
         self.teams: List[Team] = teams or []
         self.uris: List[str] = uris or []
         self.start: datetime = start or UNKNOWN_DATE_TIME
 
-        if isinstance(guid, str):
-            guid = UUID(guid)
-        self.guid = guid or uuid4()
-
     def __str__(self):
         return self.name
+
+    @property
+    def name(self):
+        return self.simple_source.name
+
+    @property
+    def guid(self):
+        return self.simple_source.name
 
     @property
     def tournament_id(self) -> str:
@@ -46,15 +57,10 @@ class Source:
         return self.name.rpartition('-')[2]
 
     @staticmethod
-    def deserialize_source_uuids(info: dict, key: Optional[str] = "S") -> List[UUID]:
-        return deserialize_uuids(info, key, [(Source, lambda s: s.guid)])
-
-    @staticmethod
     def from_dict(obj: dict) -> 'Source':
         assert isinstance(obj, dict)
         try:
             return Source(
-                guid=UUID(obj.get("Id")),
                 name=obj.get("Name", UNKNOWN_SOURCE),
                 brackets=from_list(lambda x: Bracket.from_dict(x), obj.get("Brackets")),
                 players=from_list(lambda x: Player.from_dict(x), obj.get("Players")),
@@ -63,11 +69,14 @@ class Source:
                 start=Source.cs_ticks_to_datetime(obj["Start"]) if "Start" in obj else UNKNOWN_DATE_TIME,
             )
         except Exception as e:
-            logging.exception(exc_info=e, msg=f"Exception occurred loading Source with id {obj.get('Id', '(Unknown)')}: {e}, {e.args}")
+            logging.exception(exc_info=e,
+                              msg=f"Exception occurred loading Source with name {obj.get('Name', '(Unknown)')}: {e}, {e.args}")
             raise e
 
     def to_dict(self) -> dict:
-        result = {"Id": self.guid.__str__(), "Name": self.name}
+        result = {}
+        if self.name:
+            result["Name"] = self.name
         if len(self.brackets) > 0:
             result["Brackets"] = to_list(lambda x: Bracket.to_dict(x), self.brackets)
         if len(self.players) > 0:

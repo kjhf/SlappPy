@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, Union, List, Tuple, Optional, Iterable, SupportsInt, Set
 from uuid import UUID
 
@@ -7,7 +6,7 @@ from slapp_py.core_classes.division import Division
 from slapp_py.core_classes.player import Player
 from slapp_py.core_classes.skill import Skill
 from slapp_py.core_classes.team import Team
-from slapp_py.slapp_runner.simple_source import SimpleSource
+from slapp_py.core_classes.simple_source import SimpleSource
 
 
 class SlappResponseObject:
@@ -15,10 +14,10 @@ class SlappResponseObject:
         matched_players: List[Player] = [Player.from_dict(x) for x in response.get("Players", [])]
         matched_teams: List[Team] = [Team.from_dict(x) for x in response.get("Teams", [])]
         known_teams: Dict[str, Team] = {}
-        placements_for_players: Dict[str, Dict[str, List[Bracket]]] = {}
-        """Dictionary keyed by Player id, of value Dictionary keyed by Source id of value Placements list"""
+        placements_for_players: Dict[str, Dict[SimpleSource, List[Bracket]]] = {}
+        """Dictionary keyed by Player id, of value Dictionary keyed by Source of value Placements list"""
 
-        for team_id, team_dict in response.get("AdditionalTeams").items():
+        for team_id, team_dict in response.get("AdditionalTeams", {}).items():
             known_teams[team_id.__str__()] = Team.from_dict(team_dict)
         for team in matched_teams:
             known_teams[team.guid.__str__()] = team
@@ -27,7 +26,7 @@ class SlappResponseObject:
         # The tuple is sent as a dict, which is keyed by Item1, Item2, and contains the Player (Item1) or bool (Item2).
         matched_players_for_teams: Dict[str, List[Tuple[Player, bool]]] = dict()
         """Dictionary keyed by Team id, of value (Player, bool)[], where the bool is if the Player is currently in the team."""
-        for team_id, player_tuples in response.get("PlayersForTeams").items():
+        for team_id, player_tuples in response.get("PlayersForTeams", {}).items():
             for tup in player_tuples:
                 player_dict = tup.get("Item1", None)
                 if isinstance(player_dict, dict):
@@ -35,16 +34,12 @@ class SlappResponseObject:
                         .setdefault(team_id, [])\
                         .append((Player.from_dict(player_dict), bool(tup.get("Item2", False))))
 
-        sources: Dict[str, SimpleSource] = {}
-        for source_id, source_name in response.get("Sources").items():
-            sources[source_id] = SimpleSource(id=source_id, name=source_name)
-
-        for player_id, source_dicts in response.get("PlacementsForPlayers").items():
-            for source_id, brackets in source_dicts.items():
+        for player_id, source_dicts in response.get("PlacementsForPlayers", {}).items():
+            for source_name, brackets in source_dicts.items():
                 for bracket in brackets:
                     placements_for_players\
                         .setdefault(player_id, {})\
-                        .setdefault(source_id, [])\
+                        .setdefault(SimpleSource(source_name), [])\
                         .append(Bracket.from_dict(bracket))
 
         self.matched_players = matched_players
@@ -52,7 +47,7 @@ class SlappResponseObject:
         self.known_teams = known_teams
         self.placements_for_players = placements_for_players
         self.matched_players_for_teams = matched_players_for_teams
-        self.sources = sources
+        self.sources = SimpleSource.from_serialized(response.get("Sources")) or []
         """Sources keyed by id, values are its name"""
         self.query = response.get("Query", "<UNKNOWN_QUERY_PLEASE_DEBUG>")
 
@@ -127,10 +122,11 @@ class SlappResponseObject:
         return self.get_teams_from_ids([team_id])[0]
 
     def get_teams_for_player(self, p: Player) -> List[Team]:
-        return [self.get_team(t_uuid) for t_uuid in p.teams]
+        """Gets the resolved teams for this player in most recent chronological order. First is the current team."""
+        return [self.get_team(t_uuid) for t_uuid in p.teams_information.get_teams_ordered()]
 
     def get_best_team_for_player(self, p: Player) -> Team:
-        return self.get_best_team_by_div([self.get_team(t_uuid) for t_uuid in p.teams])
+        return self.get_best_team_by_div([self.get_team(t_uuid) for t_uuid in p.teams_information.get_teams_unordered()])
 
     def get_team_skills(self, team_guid: Union[UUID, str], include_ex_players: bool = True) -> Dict[Player, Skill]:
         """
@@ -140,32 +136,10 @@ class SlappResponseObject:
         players = self.get_players_in_team(team_guid, include_ex_players)
         return {player: player.skill for player in players}
 
-    def get_simple_sources(self, sources: Union[Player, Team, List[UUID]]) -> List[SimpleSource]:
-        """Get the SimpleSource list for the specified sources/team/player."""
-        if isinstance(sources, Player):
-            sources = sources.sources
-        elif isinstance(sources, Team):
-            sources = sources.sources
-        if not isinstance(sources, list):
-            sources = [sources]
-
-        result = []
-        for source in sources:
-            from slapp_py.core_classes.builtins import BuiltinSource
-            if source == BuiltinSource.guid:
-                result.append(SimpleSource(id=BuiltinSource.guid, name=BuiltinSource.name))
-            else:
-                simple_source = self.sources.get(source.__str__(), None)
-                if not simple_source:
-                    logging.error(f"Source was not specified in JSON: {source}")
-                else:
-                    result.append(simple_source)
-        result.sort(key=lambda s: s.name, reverse=True)  # Sorting by name guaranteed - all sources should have a name.
-        return result
-
-    def get_grouped_sources(self, sources: Union[Player, Team, List[UUID]]) -> Dict[str, List[SimpleSource]]:
+    @staticmethod
+    def get_grouped_sources(obj: Union[Player, Team]) -> Dict[str, List[SimpleSource]]:
         """Group the SimpleSource list for the specified sources/team/player by tourney name."""
-        simple_sources = self.get_simple_sources(sources)
+        simple_sources = obj.sources
         result = {}
         for simple_source in simple_sources:
             result.setdefault(simple_source.tournament_name or '', []).append(simple_source)
@@ -174,12 +148,13 @@ class SlappResponseObject:
             sources_for_tourney.sort(key=lambda s: s.name, reverse=True)
         return result
 
-    def get_grouped_sources_text(self, sources: Union[Player, Team, List[UUID]]) -> List[str]:
+    @staticmethod
+    def get_grouped_sources_text(sources: Union[Player, Team, List[UUID]]) -> List[str]:
         """
         Group the SimpleSource list for the specified sources/team/player by tourney name.
         Duplicates are removed.
         """
-        groups = self.get_grouped_sources(sources)
+        groups = SlappResponseObject.get_grouped_sources(sources)
         message = []
         for tourney, simple_sources in groups.items():
             group_key = tourney + ': ' if tourney else ''
@@ -188,22 +163,24 @@ class SlappResponseObject:
                 if group_key
                 else [simple_source.get_linked_name_display() for simple_source in simple_sources]
             ))
+            group_value_array.sort(reverse=True)
             separator = ', ' if group_key else '\n'
             group_value = separator.join(group_value_array)
             message.append(f"{group_key}{group_value}")
         return message
 
-    def get_brackets_for_player(self, p: Player) -> Dict[str, List[Bracket]]:
+    def get_brackets_for_player(self, p: Player) -> Dict[SimpleSource, List[Bracket]]:
         """
         Gets the brackets for the specified player in a dictionary keyed by the source id and its brackets.
         """
         return self.placements_for_players.get(p.guid.__str__(), {})
 
-    def get_brackets_for_player_by_source(self, p: Player, source_id: str) -> List[Bracket]:
+    def get_brackets_for_player_by_source(self, p: Player, source: Union[str, SimpleSource]) -> List[Bracket]:
         """
         Gets the brackets for the specified player for the source specified as a flat list.
         """
-        return self.get_brackets_for_player(p).get(source_id.__str__(), [])
+        name = SimpleSource(source) if isinstance(source, str) else source
+        return self.get_brackets_for_player(p).get(name, [])
 
     def get_placements_by_place(self, p: Player, place: Union[int, SupportsInt] = 1) -> List[Tuple[SimpleSource, Bracket, Set[UUID]]]:
         """
@@ -216,7 +193,7 @@ class SlappResponseObject:
         result = []
         place = place if isinstance(place, int) else int(place)
         brackets_by_source = self.get_brackets_for_player(p)
-        for source_id, brackets in brackets_by_source.items():
+        for simple_source, brackets in brackets_by_source.items():
             for bracket in brackets:  # Note: We need the bracket name so it's easier to do as a rolled-foreach loop
                 if place in bracket.placements.players_by_placement:
                     first_place_ids = [player_id.__str__() for player_id in
@@ -224,7 +201,7 @@ class SlappResponseObject:
                     if p.guid.__str__() in first_place_ids:
                         from slapp_py.core_classes.builtins import NoTeam
                         team = bracket.placements.teams_by_placement.get(place, {NoTeam.guid})
-                        result.append((self.sources[source_id], bracket, team))
+                        result.append((simple_source, bracket, team))
         return result
 
     def get_low_ink_placements(self, p: Player) -> List[Tuple[int, str, str]]:
@@ -233,12 +210,10 @@ class SlappResponseObject:
         Ranking (number), bracket name, tournament name
         """
         result = []
-        low_ink_sources = [s for s in self.placements_for_players.get(p.guid.__str__(), []) if
-                           "low-ink-" in self.sources.get(s, s).name]
+        low_ink_sources = [s for s in self.placements_for_players.get(p.guid.__str__(), []) if "low-ink-" in s.name]
 
-        for source_id in low_ink_sources:
-            placements_for_source = self.placements_for_players[p.guid.__str__()][source_id]
-            source_name = self.sources[source_id].name
+        for source in low_ink_sources:
+            placements_for_source = self.placements_for_players[p.guid.__str__()][source]
 
             # Take only the brackets useful to us
             # i.e. Alpha, Beta, Gamma, and previous Top Cuts.
@@ -255,7 +230,7 @@ class SlappResponseObject:
             for bracket in brackets:
                 for placement in bracket.placements.players_by_placement:
                     if p.guid in bracket.placements.players_by_placement[placement]:
-                        result.append((placement, bracket.name, source_name))
+                        result.append((placement, bracket.name, source.name))
         return result
 
     def best_low_ink_placement(self, p: Player) -> Optional[Tuple[int, str, str]]:

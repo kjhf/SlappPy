@@ -1,7 +1,7 @@
 from typing import Optional, Union, List
-from uuid import UUID
 
 from slapp_py.core_classes.name import Name
+from slapp_py.core_classes.simple_source import SimpleSource
 from slapp_py.helpers.str_helper import is_none_or_whitespace
 
 
@@ -11,7 +11,7 @@ class Social(Name):
     def __init__(self,
                  social_base_address: str,
                  value: Optional[str] = None,
-                 sources: Union[None, UUID, List[UUID]] = None):
+                 sources: Union[None, SimpleSource, List[SimpleSource]] = None):
         self.social_base_address = social_base_address
         super().__init__(
             value=self._process_handle(value),

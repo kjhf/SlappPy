@@ -1,5 +1,6 @@
-from typing import List, Union
-from uuid import UUID
+from typing import List
+
+from slapp_py.core_classes.simple_source import SimpleSource
 
 from slapp_py.core_classes.name import Name
 from slapp_py.core_classes.socials.battlefy_user_social import BattlefyUserSocial
@@ -24,12 +25,11 @@ class Battlefy:
         self.usernames = usernames
         self.persistent_ids = persistent_ids
 
-    def filter_to_source(self, source_id: Union[str, UUID]) -> 'Battlefy':
-        search_uuid = source_id if isinstance(source_id, UUID) else UUID(source_id)
+    def filter_to_source(self, source_id: SimpleSource) -> 'Battlefy':
         return Battlefy(
-            slugs=[name for name in self.slugs if search_uuid in name.sources],
-            usernames=[name for name in self.usernames if search_uuid in name.sources],
-            persistent_ids=[name for name in self.persistent_ids if search_uuid in name.sources]
+            slugs=[name for name in self.slugs if source_id in name.sources],
+            usernames=[name for name in self.usernames if source_id in name.sources],
+            persistent_ids=[name for name in self.persistent_ids if source_id in name.sources]
         )
 
     @property

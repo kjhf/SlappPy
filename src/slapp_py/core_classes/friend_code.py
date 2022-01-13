@@ -2,69 +2,85 @@ import hashlib
 import logging
 import re
 from typing import List, Union
-
-import dotenv
-
 from slapp_py.helpers.dict_helper import from_list
 
 
 class FriendCode:
-    fc: List[int] = []
+    fc_short_1: int
+    fc_short_2: int
+    fc_short_3: int
 
     def __init__(self, param: Union[str, List[int], int]):
         if not param:
             raise ValueError('FriendCode parameter must be specified.')
 
-        elif isinstance(param, str):
-            param = [int(part) for part in re.match('^(\\d{4})-(\\d{4})-(\\d{4})$', param).group(1, 2, 3)]
+        if isinstance(param, int):
+            param = param.__str__()
 
-        elif isinstance(param, int):
-            string = param.__str__()
-            if len(string) < 10 or len(string) > 12:
-                raise ValueError(f'The FriendCode in int form should be 9-12 digits long, '
-                                 f'actually {len(string)}.')
-            param = [
-                int(string[-12:-8]),
-                int(string[-8:-4]),
-                int(string[-4:])
-            ]
+        if isinstance(param, str):
+            if param.isnumeric():
+                if len(param) < 9 or len(param) > 12:
+                    raise ValueError(f'The FriendCode in int form should be 9-12 digits long, '
+                                     f'actually {len(param)}.')
+                param = [
+                    int(param[-12:-8]),
+                    int(param[-8:-4]),
+                    int(param[-4:])
+                ]
+            else:
+                try:
+                    param = [int(part) for part in re.search(r"\(?(SW|FC|sw|fc)?\s*([:\-=])?\s?(\d{4})\s*([- ._/=])\s*(\d{4})\s*([- ._/=])\s*(\d{4})\s*\)?", param).group(3, 5, 7)]
+                except AttributeError:
+                    raise ValueError("Can't parse the specified Friend Code: " + param)
 
         if len(param) != 3:
             raise ValueError('FriendCode should be 3 ints.')
 
-        self.fc = param
+        self.fc_short_1 = param[0]
+        self.fc_short_2 = param[1]
+        self.fc_short_3 = param[2]
+
+    @property
+    def no_code(self) -> bool:
+        return self.fc_short_1 == 0 and self.fc_short_2 == 0 and self.fc_short_3 == 0
 
     def __str__(self, separator: str = '-'):
-        if not self.fc:
+        if self.no_code:
             return "(not set)"
 
-        return f'{self.fc[0]:04}{separator}{self.fc[1]:04}{separator}{self.fc[2]:04}'
+        return f'{self.fc_short_1:04}{separator}{self.fc_short_2:04}{separator}{self.fc_short_3:04}'
+
+    def __hash__(self) -> int:
+        return self.to_int()
 
     def __eq__(self, other):
         if not isinstance(other, FriendCode):
             return False
-        if len(self.fc) == len(other.fc):
-            return all(self.fc[i] == other.fc[i] for i in range(0, 3))
-        else:
-            return False
+
+        return (self.fc_short_1 == other.fc_short_1
+                and self.fc_short_2 == other.fc_short_2
+                and self.fc_short_3 == other.fc_short_3)
 
     @staticmethod
-    def from_dict(obj: Union[dict, list]) -> 'FriendCode':
-        if isinstance(obj, list):
+    def from_serialized(obj: Union[dict, list, str]) -> 'FriendCode':
+        if isinstance(obj, list) or isinstance(obj, str):
             return FriendCode(obj)
         elif isinstance(obj, dict):
             # Old form
             return FriendCode(param=from_list(lambda x: int(x), obj.get("FC")))
         else:
             logging.error(f"Unknown FriendCode form: {type(obj)}")
-            return NO_FRIEND_CODE
+            return FriendCode([0, 0, 0])
 
     def to_dict(self) -> list:
         # New form simply returns the short[]
-        return self.fc
+        return [self.fc_short_1, self.fc_short_2, self.fc_short_3]
+
+    def to_int(self):
+        return 0 if self.no_code else int(self.__str__(''))
 
     def is_3ds_valid_code(self) -> bool:
-        fc_int = int(f'{self.fc[0]}{self.fc[1]}{self.fc[2]}')
+        fc_int = self.to_int()
         principal = fc_int & 0xffffffff
         checksum = fc_int >> 32
 
@@ -76,11 +92,8 @@ class FriendCode:
         return checksum == calc_sum
 
 
-NO_FRIEND_CODE_SHORTS: List[int] = [0, 0, 0]
-NO_FRIEND_CODE = FriendCode(NO_FRIEND_CODE_SHORTS)
-
-
 if __name__ == '__main__':
+    import dotenv
     dotenv.load_dotenv()
     __entered = input('Enter friend code.')
     try:
@@ -89,4 +102,3 @@ if __name__ == '__main__':
         __result = FriendCode(__entered)
 
     print(__result)
-

@@ -1,7 +1,7 @@
 import json
 import logging
 from cmath import sqrt
-from typing import Optional, Iterable, List, Tuple, Collection
+from typing import Optional, Iterable, List, Tuple, Collection, Union
 
 import trueskill
 from trueskill import Rating, expose, global_env
@@ -111,11 +111,11 @@ class Skill:
             return f"It depends on who is playing. I think {team_2} will win this. ({100-favouring_team_1}-{100-favouring_team_2}% of win)"
 
     @staticmethod
-    def from_dict(obj: dict) -> 'Skill':
-        if isinstance(obj, list) and len(obj) == 1 and isinstance(obj[0], dict):
+    def from_dict(obj: Union[dict, tuple]) -> 'Skill':
+        if isinstance(obj, (list, tuple)) and len(obj) == 1 and isinstance(obj[0], dict):
             obj = obj[0]
 
-        assert isinstance(obj, dict), f"Failed dict assertion: {obj}"
+        assert isinstance(obj, dict), f"Failed dict assertion, {type(obj)=}: {obj}"
         return Skill(
             rating=Rating(
                 mu=obj.get("μ") if "μ" in obj else None,

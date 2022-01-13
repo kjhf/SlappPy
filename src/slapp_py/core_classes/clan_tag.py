@@ -1,7 +1,7 @@
-from typing import Optional, List
-from uuid import UUID
+from typing import Optional, List, Union
 
 from slapp_py.core_classes.name import Name
+from slapp_py.core_classes.simple_source import SimpleSource
 from slapp_py.core_classes.tag_option import TagOption
 
 
@@ -9,13 +9,10 @@ class ClanTag(Name):
     layout_option: Optional[TagOption]
 
     def __init__(self, value: Optional[str],
-                 sources: Optional[List[UUID]] = None,
+                 sources: Union[None, SimpleSource, List[SimpleSource]] = None,
                  layout_option: Optional[TagOption] = TagOption.Unknown) -> None:
-        if sources is None:
-            sources = []
 
         super().__init__(value, sources)
-
         self.layout_option = layout_option
 
     @staticmethod
