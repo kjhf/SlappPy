@@ -21,6 +21,7 @@ from slapp_py.helpers.dict_helper import first_key, add_set_by_key
 from slapp_py.helpers.str_helper import is_none_or_whitespace
 from slapp_py.misc.download_from_battlefy_result import get_or_fetch_tourney_teams_file, get_stage_ids_for_tourney, \
     get_or_fetch_stage_file, get_or_fetch_standings_file
+from slapp_py.misc.download_from_sendou import conditionally_download_from_sendou_and_save
 from slapp_py.misc.slapp_files_utils import TOURNEY_TEAMS_SAVE_DIR, get_latest_sources_yaml_file, \
     load_latest_snapshot_sources_file, load_latest_snapshot_players_file, get_slapp_files_matching
 from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER, SlapPipe
@@ -58,7 +59,7 @@ def fetch_tournament_ids(save_path: Optional[str] = None) -> Set[str]:
 
     print(f"Getting tourneys from the ids ({len(full_tourney_ids)} to get)")
     for tourney_id in full_tourney_ids:
-        get_or_fetch_tourney_teams_file(tourney_id)
+        _ = get_or_fetch_tourney_teams_file(tourney_id)
 
     if save_path:
         print("Saving...")
@@ -122,6 +123,7 @@ def generate_new_sources_files(battlefy_ids: Collection[str], skip_redownload: b
 
     # And the other json or tsv data files
     additional_files = []
+    conditionally_download_from_sendou_and_save()
     additional_files.extend(get_slapp_files_matching('*-*-*-*.json', TOURNEY_TEAMS_SAVE_DIR))
     additional_files.extend(get_slapp_files_matching('*-*-*-*.tsv', TOURNEY_TEAMS_SAVE_DIR))
 

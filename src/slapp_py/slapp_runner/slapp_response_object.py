@@ -196,9 +196,8 @@ class SlappResponseObject:
         for simple_source, brackets in brackets_by_source.items():
             for bracket in brackets:  # Note: We need the bracket name so it's easier to do as a rolled-foreach loop
                 if place in bracket.placements.players_by_placement:
-                    first_place_ids = [player_id.__str__() for player_id in
-                                       bracket.placements.players_by_placement[1]]
-                    if p.guid.__str__() in first_place_ids:
+                    player_ids = [player_id.__str__() for player_id in bracket.placements.players_by_placement[place]]
+                    if p.guid.__str__() in player_ids:
                         from slapp_py.core_classes.builtins import NoTeam
                         team = bracket.placements.teams_by_placement.get(place, {NoTeam.guid})
                         result.append((simple_source, bracket, team))

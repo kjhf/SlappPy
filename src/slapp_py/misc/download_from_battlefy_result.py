@@ -11,6 +11,7 @@ from os.path import exists, join, isfile
 from battlefy_toolkit.caching.fileio import load_json_from_file, save_as_json_to_file
 
 from slapp_py.helpers.fetch_helper import fetch_address
+from slapp_py.misc.models.tournament_information import TournamentInformation
 from slapp_py.misc.slapp_files_utils import \
     load_latest_snapshot_sources_file, TOURNEY_TEAMS_SAVE_DIR, STAGES_SAVE_DIR, \
     TOURNEY_INFO_SAVE_DIR
@@ -116,6 +117,12 @@ def get_stage_ids_for_tourney(tourney_id_to_fetch: str, force: bool = False) -> 
     """"Returns stage (id, name) for the specified tourney"""
     _tourney_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch, force=force) or set()
     return set(_tourney_contents.get('stageIDs', set()))
+
+
+def get_or_fetch_tourney_information(tourney_id_to_fetch: str, force: bool = False) -> TournamentInformation:
+    """"Returns the Tournament Information for the specified tourney"""
+    _tourney_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch, force=force) or {}
+    return TournamentInformation.from_dict(_tourney_contents)
 
 
 def get_or_fetch_stage_file(tourney_id_to_fetch: str, stage_id_to_fetch: str, force: bool = False) -> Optional[dict]:

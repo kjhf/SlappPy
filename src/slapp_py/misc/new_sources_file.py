@@ -1,7 +1,12 @@
+import csv
+from datetime import datetime
+
 import dotenv
 import logging
 from battlefy_toolkit.caching.fileio import load_json_from_file
 from slapp_py.helpers.console_helper import ask, pause
+from slapp_py.misc.download_from_battlefy_result import get_or_fetch_tourney_information
+from slapp_py.misc.models.tournament_information import TournamentInformation
 from slapp_py.sources_builder.source_file_builder import fetch_tournament_ids, generate_new_sources_files, patch_sources, \
     rebuild_sources, update_sources_with_placements
 from slapp_py.sources_builder.sources_to_skills import update_sources_with_skills
@@ -23,6 +28,14 @@ def full_rebuild(skip_pauses: bool = False, patch: bool = True):
     else:
         print(f"Phase 1 loading from file...")
         full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
+
+    # Phase 1.5 - Translate tournaments into information for us to use internally
+    tournament_information = [get_or_fetch_tourney_information(tournament_id) for tournament_id in full_tourney_ids]
+    with open(f"{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}-tournament-information.csv", 'w', encoding='UTF8') as f:
+        writer = csv.writer(f)
+        writer.writerow(TournamentInformation.get_headers())
+        for info in tournament_information:
+            writer.writerow(info.to_row())
 
     # Phase 2. Updates sources list
     new_sources_file_path, patch_sources_file_path = generate_new_sources_files(full_tourney_ids, skip_redownload=True)
@@ -63,6 +76,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger().setLevel("DEBUG")
 
-    # full_rebuild(skip_pauses=True, patch=False)
-    update_sources_with_placements()
-    update_sources_with_skills(clear_current_skills=True)
+    full_rebuild(skip_pauses=True, patch=False)
+    # update_sources_with_placements()
+    # update_sources_with_skills(clear_current_skills=True)
+    pass

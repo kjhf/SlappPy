@@ -101,7 +101,7 @@ class Team:
             return ' ⬅ '.join([d.__str__() for d in self.division_information.get_divs_ordered()[:3]])
 
     def filter_to_source(self, source_id: SimpleSource) -> 'Team':
-        """Filter this Player instance down to the components made by a sources id."""
+        """Filter this Team instance down to the components made by a sources id."""
         return Team(
             battlefy_persistent_team_ids=[name for name in self.battlefy_persistent_team_ids if source_id in name.sources],
             clan_tags=[name for name in self.clan_tags if source_id in name.sources],

@@ -6,7 +6,7 @@ def escape_characters(string: Union[str, dict], characters: str = '\\', escape_c
     Escape characters in a string with the specified escape character(s).
     :param string: The string to escape
     :param characters: The characters that must be escaped
-    :param escape_character: The character to use an an escape
+    :param escape_character: The character to use for an escape
     :return: The escaped string
     """
     if isinstance(string, dict):
