@@ -9,5 +9,5 @@ python-dotenv
 
 # Optionals
 bs4
-pychallonge~=1.11.1
+pychallonge~=1.11.5
 smashggpy

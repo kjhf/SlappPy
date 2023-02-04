@@ -74,13 +74,13 @@ class TeamsHandler:
     def from_dict(obj: dict) -> 'TeamsHandler':
         assert isinstance(obj, dict)
         try:
-            val_dict = obj.get("T")
+            val_dict = obj.get("Items") or obj.get("T")
             result = TeamsHandler()
             for key, value in val_dict.items():
                 result.add(UUID(key), SimpleSource.from_serialized(value))
             return result
         except Exception as e:
-            logging.exception(exc_info=e, msg=f"Exception occurred loading Divisions Handler: {e}, {e.args}")
+            logging.exception(exc_info=e, msg=f"Exception occurred loading Teams Handler: {e}, {e.args}")
             raise e
 
     def to_dict(self) -> dict:

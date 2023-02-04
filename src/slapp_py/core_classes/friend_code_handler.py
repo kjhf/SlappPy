@@ -5,6 +5,8 @@ from slapp_py.core_classes.friend_code import FriendCode
 from slapp_py.core_classes.simple_source import SimpleSource
 from slapp_py.helpers.dict_helper import first_key, order_dict_by_value
 
+SERIALIZATION_NAME = "FCs"
+
 
 class FriendCodeHandler:
     _codes: Dict[FriendCode, List[SimpleSource]]
@@ -75,7 +77,7 @@ class FriendCodeHandler:
     def from_dict(obj: dict) -> 'FriendCodeHandler':
         assert isinstance(obj, dict)
         try:
-            val_dict = obj.get("C")
+            val_dict = obj.get("Items") or obj.get("C")
             result = FriendCodeHandler()
             for key, value in val_dict.items():
                 result.add(FriendCode(key), SimpleSource.from_serialized(value))

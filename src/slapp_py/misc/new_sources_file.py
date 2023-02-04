@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from os.path import join
 
 import dotenv
 import logging
@@ -7,6 +8,7 @@ from battlefy_toolkit.caching.fileio import load_json_from_file
 from slapp_py.helpers.console_helper import ask, pause
 from slapp_py.misc.download_from_battlefy_result import get_or_fetch_tourney_information
 from slapp_py.misc.models.tournament_information import TournamentInformation
+from slapp_py.misc.slapp_files_utils import CURRENT_TOURNAMENT_IDS_FILE, DUMPS_DIR
 from slapp_py.sources_builder.source_file_builder import fetch_tournament_ids, generate_new_sources_files, patch_sources, \
     rebuild_sources, update_sources_with_placements
 from slapp_py.sources_builder.sources_to_skills import update_sources_with_skills
@@ -23,15 +25,15 @@ def full_rebuild(skip_pauses: bool = False, patch: bool = True):
     # Phase 1. Tourney ids
     do_fetch_tourney_ids = ask("Fetch new tourney ids? [Y/N]")
     if do_fetch_tourney_ids:
-        full_tourney_ids = fetch_tournament_ids("Phase 1 Ids.json")
+        full_tourney_ids = fetch_tournament_ids(CURRENT_TOURNAMENT_IDS_FILE)
         print(f"Phase 1 done, {len(full_tourney_ids)} ids saved.")
     else:
         print(f"Phase 1 loading from file...")
-        full_tourney_ids = load_json_from_file("Phase 1 Ids.json")
+        full_tourney_ids = load_json_from_file(CURRENT_TOURNAMENT_IDS_FILE)
 
     # Phase 1.5 - Translate tournaments into information for us to use internally
     tournament_information = [get_or_fetch_tourney_information(tournament_id) for tournament_id in full_tourney_ids]
-    with open(f"{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}-tournament-information.csv", 'w', encoding='UTF8') as f:
+    with open(join(DUMPS_DIR, f"{datetime.strftime(datetime.now(), '%Y-%m-%d-%H-%M-%S')}-tournament-information.csv"), 'w', encoding='UTF8') as f:
         writer = csv.writer(f)
         writer.writerow(TournamentInformation.get_headers())
         for info in tournament_information:
@@ -77,6 +79,6 @@ if __name__ == '__main__':
     logging.getLogger().setLevel("DEBUG")
 
     full_rebuild(skip_pauses=True, patch=False)
-    # update_sources_with_placements()
-    # update_sources_with_skills(clear_current_skills=True)
+    update_sources_with_placements()
+    update_sources_with_skills(clear_current_skills=True)
     pass

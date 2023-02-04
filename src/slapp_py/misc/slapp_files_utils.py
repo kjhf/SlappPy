@@ -11,7 +11,9 @@ from slapp_py.slapp_runner.slapipes import SLAPP_DATA_FOLDER
 
 TOURNEY_INFO_SAVE_DIR = join(SLAPP_DATA_FOLDER, "tourney_info")
 TOURNEY_TEAMS_SAVE_DIR = join(SLAPP_DATA_FOLDER, "tourney_teams")
+DUMPS_DIR = join(SLAPP_DATA_FOLDER, "Dumps")
 STAGES_SAVE_DIR = join(TOURNEY_INFO_SAVE_DIR, "stages")
+CURRENT_TOURNAMENT_IDS_FILE = join(DUMPS_DIR, "CurrentTournamentIds.json")
 
 
 def get_slapp_files_matching(pattern: str, directory: str = SLAPP_DATA_FOLDER) -> List[str]:

@@ -128,4 +128,4 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-src/slapp_py/misc/Phase 1 Ids.json
+/src/slapp_py/misc/*-tournament-information.csv

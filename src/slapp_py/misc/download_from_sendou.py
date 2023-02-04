@@ -1,4 +1,6 @@
+import logging
 from datetime import datetime
+from json import JSONDecodeError
 from os.path import join, exists
 from typing import List, Optional
 
@@ -46,7 +48,10 @@ def conditionally_download_from_sendou_and_save() -> str:
     """Downloads from Sendou and saves the JSON file, if one has not been downloaded today. Returns the file path."""
     destination = get_sendou_path()
     if not exists(destination):
-        download_from_sendou_and_save(destination)
+        try:
+            download_from_sendou_and_save(destination)
+        except JSONDecodeError as e:
+            logging.error(f"Failed to download Sendou data: {e}")
     return destination
 
 

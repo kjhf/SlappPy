@@ -72,7 +72,7 @@ class DivisionsHandler:
     def from_dict(obj: dict) -> 'DivisionsHandler':
         assert isinstance(obj, dict)
         try:
-            val_dict = obj.get("D")
+            val_dict = obj.get("Items") or obj.get("D")
             result = DivisionsHandler()
             for key, value in val_dict.items():
                 result.add(Division(key), SimpleSource.from_serialized(value))

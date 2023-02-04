@@ -47,6 +47,16 @@ def load_sources_yaml_file(path: Optional[str] = None):
         return None
 
 
+def load_sources_yaml_from_snapshot():
+    sources = load_latest_snapshot_sources_file()
+    if not sources:
+        return None
+    # else
+    sources_contents = (list(map(lambda source: source.tournament_id, sources)))
+    new_sources_file_path = generate_sources_yaml(sources_contents)
+    return load_sources_yaml_file(new_sources_file_path)
+
+
 def fetch_tournament_ids(save_path: Optional[str] = None) -> Set[str]:
     """
     Fetch the latest tournament ids from Battlefy.
@@ -67,6 +77,55 @@ def fetch_tournament_ids(save_path: Optional[str] = None) -> Set[str]:
     return full_tourney_ids
 
 
+def generate_sources_yaml(battlefy_ids: Collection[str], skip_redownload: bool = False, sources_yaml_filename: str = "sources.yaml") -> str:
+    """Take a collection of battlefy ids and generate a sources yaml for it.
+    :param battlefy_ids: Collection of (new) battlefy ids to process.
+    :param skip_redownload: Skip the redownload of files if a failure has occurred?
+    :param sources_yaml_filename: The filename to save to.
+    :returns: A file path to the new sources file
+    """
+    battlefy_ids = list(set(battlefy_ids))
+    battlefy_ids_len = len(battlefy_ids)
+    print(f"Generating {sources_yaml_filename} for {battlefy_ids_len} Battlefy Ids.")
+    path_by_tournament_id: Dict[str, str] = {}
+
+    for tourney_id in battlefy_ids:
+        filename = tourney_id + ".json"
+        matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
+        if len(matched_tourney_teams_files) == 1:
+            relative_path = relpath(matched_tourney_teams_files[0], start=SLAPP_DATA_FOLDER).replace('\\', '/')
+            if not relative_path.startswith('.'):
+                relative_path = './' + relative_path
+            path_by_tournament_id[tourney_id] = relative_path
+        else:
+            print(f"ERROR: Found an updated tourney file but a unique file wasn't downloaded for it: "
+                  f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+            if skip_redownload:
+                continue
+            else:
+                print("Re-attempting download...")
+                if get_or_fetch_tourney_teams_file(tourney_id):
+                    print("Success!")
+                    matched_tourney_teams_files = glob.glob(join(TOURNEY_TEAMS_SAVE_DIR, f'*{filename}'))
+                    if len(matched_tourney_teams_files) == 1:
+                        path_by_tournament_id[tourney_id] = relpath(matched_tourney_teams_files[0],
+                                                                    start=SLAPP_DATA_FOLDER).replace('\\', '/')
+                    else:
+                        print(f"ERROR: Reattempt failed. Please debug. "
+                              f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+                else:
+                    print(f"ERROR: Reattempt failed. Skipping file. "
+                          f"{tourney_id=}, {len(matched_tourney_teams_files)=}")
+
+    print(f"Writing to {sources_yaml_filename}... ({len(path_by_tournament_id)} sources).")
+    sources_file_path = join(SLAPP_DATA_FOLDER, sources_yaml_filename)
+    contents = [line for line in path_by_tournament_id.values() if not is_none_or_whitespace(line)]
+    contents.sort()
+    save_text_to_file(path=sources_file_path,
+                      content='\n'.join(contents))
+    return sources_file_path
+
+
 def generate_new_sources_files(battlefy_ids: Collection[str], skip_redownload: bool = False) -> Tuple[str, str]:
     """
     Take the collection of (new) battlefy ids and generate a new sources file and a patch file.
@@ -76,7 +135,7 @@ def generate_new_sources_files(battlefy_ids: Collection[str], skip_redownload: b
     """
 
     # Current sources:
-    sources_contents = load_sources_yaml_file() or []
+    sources_contents = load_sources_yaml_file() or load_sources_yaml_from_snapshot() or []
     battlefy_ids_len = len(battlefy_ids)
     print(f"{len(sources_contents)} sources loaded from current sources yaml. "
           f"{battlefy_ids_len} Battlefy Ids known. (Diff of {battlefy_ids_len - len(sources_contents)}).")

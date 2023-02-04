@@ -195,32 +195,32 @@ def get_or_fetch_tourney_teams_file(tourney_id_to_fetch: str, force: bool = Fals
 
         # To name this file, we need the tourney file that goes with it.
         info_contents = get_or_fetch_tourney_info_file(tourney_id_to_fetch, force=force)
+        if info_contents:
+            if '_id' in info_contents and 'slug' in info_contents and 'startTime' in info_contents:
+                start_time: datetime = isoparse(info_contents['startTime'])
+                filename = f'{start_time.strftime("%Y-%m-%d")}-{info_contents["slug"]}-' \
+                           f'{tourney_id_to_fetch}.json'
+                full_path = join(TOURNEY_TEAMS_SAVE_DIR, filename)
+                print(f'OK! (Saved read tourney to {full_path})')
+            else:
+                print(f"Error: Couldn't name the downloaded tourney teams file as the tourney info is incomplete: "
+                      f"{'_id' in info_contents=} "
+                      f"{'slug' in info_contents=} "
+                      f"{'startTime' in info_contents=}")
 
-        if '_id' in info_contents and 'slug' in info_contents and 'startTime' in info_contents:
-            start_time: datetime = isoparse(info_contents['startTime'])
-            filename = f'{start_time.strftime("%Y-%m-%d")}-{info_contents["slug"]}-' \
-                       f'{tourney_id_to_fetch}.json'
-            full_path = join(TOURNEY_TEAMS_SAVE_DIR, filename)
+            if force:
+                # We just downloaded so no need to force get this again
+                for stage_id in get_stage_ids_for_tourney(tourney_id_to_fetch, force=False):
+                    get_or_fetch_stage_file(tourney_id_to_fetch, stage_id, force=True)
+
         else:
-            print(f"Couldn't name the downloaded tourney teams file as the tourney info is incomplete: "
-                  f"{'_id' in info_contents=} "
-                  f"{'slug' in info_contents=} "
-                  f"{'startTime' in info_contents=}")
+            print(f'Error: could not get the info contents for the tourney {tourney_id_to_fetch}')
 
-        print(f'OK! (Saved read tourney to {full_path})')
-
-        # else
         save_as_json_to_file(full_path, teams_contents, indent=0)
         print(f'OK! (Saved read tourney teams file to {full_path})')
 
-        if force:
-            # We just downloaded so no need to force get this again
-            for stage_id in get_stage_ids_for_tourney(tourney_id_to_fetch, force=False):
-                get_or_fetch_stage_file(tourney_id_to_fetch, stage_id, force=True)
-
     else:
         teams_contents = load_json_from_file(full_path)
-
     return teams_contents
 
 
